@@ -1,6 +1,8 @@
 import { useDesignStore } from '../store/store.js';
 import { TOKENS } from '../../styles/theme.js';
 import { Inspector } from './Inspector.js';
+import { ChatPanel } from './ChatPanel.js';
+import { ChangesetsPanel } from './ChangesetsPanel.js';
 import type { UIState } from '../store/types.js';
 
 type Tab = UIState['side_panel_tab'];
@@ -102,55 +104,9 @@ export function SidePanel() {
       {/* Tab content */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {tab === 'inspector' && <Inspector />}
-        {tab === 'changesets' && <ChangesetsPlaceholder />}
-        {tab === 'chat' && <ChatPlaceholder />}
+        {tab === 'changesets' && <ChangesetsPanel />}
+        {tab === 'chat' && <ChatPanel />}
       </div>
-    </div>
-  );
-}
-
-function ChangesetsPlaceholder() {
-  return (
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: TOKENS.textTertiary,
-        gap: 8,
-        padding: 24,
-      }}
-    >
-      <span style={{ fontSize: 24 }}>≡</span>
-      <span style={{ fontSize: 13 }}>No changesets yet</span>
-      <span style={{ fontSize: 11, textAlign: 'center', color: TOKENS.textGhost, maxWidth: 220 }}>
-        Changesets track proposed modifications before they are applied to the design.
-      </span>
-    </div>
-  );
-}
-
-function ChatPlaceholder() {
-  return (
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: TOKENS.textTertiary,
-        gap: 8,
-        padding: 24,
-      }}
-    >
-      <span style={{ fontSize: 24 }}>◆</span>
-      <span style={{ fontSize: 13 }}>Agent chat coming soon</span>
-      <span style={{ fontSize: 11, textAlign: 'center', color: TOKENS.textGhost, maxWidth: 220 }}>
-        Chat with the AI agent to propose design changes, generate code, or ask questions about your architecture.
-      </span>
     </div>
   );
 }

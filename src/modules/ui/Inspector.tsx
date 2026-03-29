@@ -2,6 +2,7 @@ import { useDesignStore } from '../store/store.js';
 import { selectSelectedNode, selectCurrentCanvasId } from '../store/selectors.js';
 import { BLOCK_ICONS, STATUS_COLORS, TOKENS } from '../../styles/theme.js';
 import type { DesignNode } from '../store/types.js';
+import { acceptNode, dismissNode } from '../changesets/review.js';
 
 // ─── Status Pill ──────────────────────────────────────────────────────────────
 
@@ -227,6 +228,83 @@ function ArrowInspector({ node }: { node: DesignNode }) {
   );
 }
 
+// ─── Proposed Node Actions ────────────────────────────────────────────────────
+
+function ProposedActions({ node }: { node: DesignNode }) {
+  const selectNode = useDesignStore((s) => s.selectNode);
+
+  const handleAccept = () => {
+    acceptNode(node.id);
+    // Keep node selected; status will update reactively
+  };
+
+  const handleDismiss = () => {
+    dismissNode(node.id);
+    selectNode(null);
+  };
+
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        padding: '10px 12px',
+        background: `${TOKENS.statusAmber}14`,
+        border: `1px dashed ${TOKENS.statusAmber}66`,
+        borderRadius: 6,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          color: TOKENS.statusAmber,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          marginBottom: 8,
+        }}
+      >
+        Agent Proposed
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={handleAccept}
+          style={{
+            flex: 1,
+            padding: '6px 0',
+            background: `${TOKENS.statusGreen}22`,
+            color: TOKENS.statusGreen,
+            border: `1px solid ${TOKENS.statusGreen}55`,
+            borderRadius: 5,
+            fontSize: 12,
+            cursor: 'pointer',
+            fontWeight: 500,
+          }}
+          title="Accept — marks node as modified"
+        >
+          ✓ Accept
+        </button>
+        <button
+          onClick={handleDismiss}
+          style={{
+            flex: 1,
+            padding: '6px 0',
+            background: `${TOKENS.statusRed}18`,
+            color: TOKENS.statusRed,
+            border: `1px solid ${TOKENS.statusRed}44`,
+            borderRadius: 5,
+            fontSize: 12,
+            cursor: 'pointer',
+            fontWeight: 500,
+          }}
+          title="Dismiss — removes this proposed node"
+        >
+          ✗ Dismiss
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Block Inspector ──────────────────────────────────────────────────────────
 
 function BlockInspector({ node }: { node: DesignNode }) {
@@ -314,6 +392,9 @@ function BlockInspector({ node }: { node: DesignNode }) {
           Double-click on canvas to drill into {node.child_canvas_id ?? 'child canvas'}
         </div>
       )}
+
+      {/* Accept / Dismiss for proposed nodes */}
+      {node.status === 'proposed' && <ProposedActions node={node} />}
     </div>
   );
 }

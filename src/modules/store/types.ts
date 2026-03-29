@@ -128,6 +128,44 @@ export interface Changeset {
   applied: boolean;
 }
 
+/** Proposed design node inside an AgentChangeset */
+export interface ProposedNode {
+  id: string;
+  kind: 'block';
+  block_type?: BlockType;
+  name: string;
+  status: 'proposed';
+  annotation?: string;
+  agent_proposed: true;
+  x?: number;
+  y?: number;
+}
+
+/** Changeset produced by an agent via the chat panel */
+export interface AgentChangeset {
+  id: string;
+  title: string;
+  agent: string;
+  target_canvas_id: string;
+  nodes: ProposedNode[];
+  raw_response: string;
+  created_at: string;
+  /** Feedback messages keyed by nodeId */
+  feedback?: Record<string, string>;
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+export type ChatRole = 'user' | 'agent';
+
+export interface ChatMessage {
+  id: string;
+  role: ChatRole;
+  content: string;
+  timestamp: string;
+  changeset_id?: string; // if this message contained a parsed changeset
+}
+
 // ─── Implementation ───────────────────────────────────────────────────────────
 
 export interface AttemptLog {

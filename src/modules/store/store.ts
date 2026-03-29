@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { CanvasNode, CodeGraph, DesignNode, UIState, ViewMode } from './types.js';
+import type {
+  AgentChangeset,
+  CanvasNode,
+  ChatMessage,
+  CodeGraph,
+  DesignNode,
+  UIState,
+  ViewMode,
+} from './types.js';
 import { MOCK_CANVASES } from './mockData.js';
 
 // ─── State Shape ──────────────────────────────────────────────────────────────
@@ -9,6 +17,13 @@ export interface DesignStoreState {
   canvases: Record<string, CanvasNode>;
   ui: UIState;
   code_graph: CodeGraph | null;
+  // Phase 4: agent changesets
+  agent_changesets: AgentChangeset[];
+  // Phase 4: per-canvas chat
+  chatMessagesByCanvas: Record<string, ChatMessage[]>;
+  chatLoadingByCanvas: Record<string, boolean>;
+  // Phase 4: selected provider id
+  selectedProviderId: string;
 }
 
 // ─── Actions Shape ────────────────────────────────────────────────────────────
@@ -46,6 +61,19 @@ export interface DesignStoreActions {
 
   // Workspace bulk-load
   loadCanvases: (canvases: Record<string, CanvasNode>, currentPath: string[]) => void;
+
+  // Phase 4: Agent Changesets
+  addChangeset: (cs: AgentChangeset) => void;
+  removeChangeset: (id: string) => void;
+  addChangesetFeedback: (changesetId: string, message: string) => void;
+
+  // Phase 4: Chat
+  addChatMessage: (canvasId: string, msg: ChatMessage) => void;
+  setChatLoading: (canvasId: string, loading: boolean) => void;
+  clearChat: (canvasId: string) => void;
+
+  // Phase 4: Provider selection
+  setSelectedProvider: (id: string) => void;
 }
 
 export type DesignStore = DesignStoreState & DesignStoreActions;
@@ -66,6 +94,11 @@ const INITIAL_STATE: DesignStoreState = {
     last_major_version: 0,
     last_major_hash: '',
   },
+  // Phase 4
+  agent_changesets: [],
+  chatMessagesByCanvas: {},
+  chatLoadingByCanvas: {},
+  selectedProviderId: 'mock',
 };
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -223,6 +256,55 @@ export const useDesignStore = create<DesignStore>()(
         state.canvases = canvases;
         state.ui.current_path = currentPath;
         state.ui.selected_node_id = null;
+      }),
+
+    // ── Phase 4: Agent Changesets ─────────────────────────────────────────
+
+    addChangeset: (cs) =>
+      set((state) => {
+        state.agent_changesets.push(cs);
+      }),
+
+    removeChangeset: (id) =>
+      set((state) => {
+        state.agent_changesets = state.agent_changesets.filter((c) => c.id !== id);
+      }),
+
+    addChangesetFeedback: (changesetId, message) =>
+      set((state) => {
+        const cs = state.agent_changesets.find((c) => c.id === changesetId);
+        if (cs) {
+          if (!cs.feedback) cs.feedback = {};
+          const key = `fb-${Date.now()}`;
+          cs.feedback[key] = message;
+        }
+      }),
+
+    // ── Phase 4: Chat ─────────────────────────────────────────────────────
+
+    addChatMessage: (canvasId, msg) =>
+      set((state) => {
+        if (!state.chatMessagesByCanvas[canvasId]) {
+          state.chatMessagesByCanvas[canvasId] = [];
+        }
+        state.chatMessagesByCanvas[canvasId].push(msg);
+      }),
+
+    setChatLoading: (canvasId, loading) =>
+      set((state) => {
+        state.chatLoadingByCanvas[canvasId] = loading;
+      }),
+
+    clearChat: (canvasId) =>
+      set((state) => {
+        state.chatMessagesByCanvas[canvasId] = [];
+      }),
+
+    // ── Phase 4: Provider selection ───────────────────────────────────────
+
+    setSelectedProvider: (id) =>
+      set((state) => {
+        state.selectedProviderId = id;
       }),
   }))
 );
