@@ -6,6 +6,8 @@ import type {
   ChatMessage,
   CodeGraph,
   DesignNode,
+  MergeConflict,
+  TrackInfo,
   UIState,
   ViewMode,
 } from './types.js';
@@ -24,6 +26,10 @@ export interface DesignStoreState {
   chatLoadingByCanvas: Record<string, boolean>;
   // Phase 4: selected provider id
   selectedProviderId: string;
+  // Phase 5: design tracks
+  active_track: string | null;    // null = main branch
+  tracks: TrackInfo[];
+  merge_conflicts: MergeConflict[];
 }
 
 // ─── Actions Shape ────────────────────────────────────────────────────────────
@@ -74,6 +80,12 @@ export interface DesignStoreActions {
 
   // Phase 4: Provider selection
   setSelectedProvider: (id: string) => void;
+
+  // Phase 5: Track management
+  setActiveTrack: (name: string | null) => void;
+  setTracks: (tracks: TrackInfo[]) => void;
+  setMergeConflicts: (conflicts: MergeConflict[]) => void;
+  resolveMergeConflict: (nodeId: string, canvasId: string, resolution: 'main' | 'track') => void;
 }
 
 export type DesignStore = DesignStoreState & DesignStoreActions;
@@ -99,6 +111,10 @@ const INITIAL_STATE: DesignStoreState = {
   chatMessagesByCanvas: {},
   chatLoadingByCanvas: {},
   selectedProviderId: 'mock',
+  // Phase 5
+  active_track: null,
+  tracks: [],
+  merge_conflicts: [],
 };
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -305,6 +321,33 @@ export const useDesignStore = create<DesignStore>()(
     setSelectedProvider: (id) =>
       set((state) => {
         state.selectedProviderId = id;
+      }),
+
+    // ── Phase 5: Track management ─────────────────────────────────────────
+
+    setActiveTrack: (name) =>
+      set((state) => {
+        state.active_track = name;
+      }),
+
+    setTracks: (tracks) =>
+      set((state) => {
+        state.tracks = tracks;
+      }),
+
+    setMergeConflicts: (conflicts) =>
+      set((state) => {
+        state.merge_conflicts = conflicts;
+      }),
+
+    resolveMergeConflict: (nodeId, canvasId, resolution) =>
+      set((state) => {
+        const conflict = state.merge_conflicts.find(
+          (c) => c.node_id === nodeId && c.canvas_id === canvasId
+        );
+        if (conflict) {
+          conflict.resolution = resolution;
+        }
       }),
   }))
 );

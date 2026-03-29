@@ -4,6 +4,22 @@ use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
 
+// ─── Track types ─────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TrackReadResult {
+    pub success: bool,
+    pub data: Option<String>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListTracksResult {
+    pub success: bool,
+    pub tracks: Vec<String>,
+    pub error: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WorkspaceReadResult {
     pub success: bool,
@@ -159,4 +175,113 @@ pub fn write_files(
         written,
         error: None,
     }
+}
+
+/// Read all tree files for a named track from `.architect/tracks/<track>/`.
+/// Returns a JSON map keyed by relative path (e.g. "tree/root/node.yaml").
+#[tauri::command]
+pub fn read_track(base: String, track: String) -> TrackReadResult {
+    let architect_dir = Path::new(&base).join(".architect");
+    let track_dir = architect_dir.join("tracks").join(&track);
+
+    if !track_dir.exists() {
+        return TrackReadResult {
+            success: false,
+            data: None,
+            error: Some(format!("Track '{}' not found at {}", track, track_dir.display())),
+        };
+    }
+
+    let mut file_map: HashMap<String, String> = HashMap::new();
+
+    // Read track.yaml
+    let track_yaml_path = track_dir.join("track.yaml");
+    if track_yaml_path.exists() {
+        match fs::read_to_string(&track_yaml_path) {
+            Ok(content) => { file_map.insert("track.yaml".to_string(), content); }
+            Err(e) => {
+                return TrackReadResult {
+                    success: false,
+                    data: None,
+                    error: Some(format!("Failed to read track.yaml: {}", e)),
+                };
+            }
+        }
+    }
+
+    // Walk tree/ under the track directory
+    let tree_dir = track_dir.join("tree");
+    if tree_dir.exists() {
+        for entry in WalkDir::new(&tree_dir)
+            .follow_links(false)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if entry.file_type().is_file() {
+                let abs = entry.path();
+                // Key is relative to track_dir, e.g. "tree/root/node.yaml"
+                let rel = abs
+                    .strip_prefix(&track_dir)
+                    .unwrap_or(abs)
+                    .to_string_lossy()
+                    .replace('\\', "/");
+
+                match fs::read_to_string(abs) {
+                    Ok(content) => { file_map.insert(rel, content); }
+                    Err(e) => {
+                        return TrackReadResult {
+                            success: false,
+                            data: None,
+                            error: Some(format!("Failed to read {}: {}", rel, e)),
+                        };
+                    }
+                }
+            }
+        }
+    }
+
+    match serde_json::to_string(&file_map) {
+        Ok(json) => TrackReadResult { success: true, data: Some(json), error: None },
+        Err(e) => TrackReadResult {
+            success: false,
+            data: None,
+            error: Some(format!("JSON serialization failed: {}", e)),
+        },
+    }
+}
+
+/// List all tracks in `.architect/tracks/`.
+/// Returns an array of track names (directory names that contain a track.yaml).
+#[tauri::command]
+pub fn list_tracks(base: String) -> ListTracksResult {
+    let tracks_dir = Path::new(&base).join(".architect").join("tracks");
+
+    if !tracks_dir.exists() {
+        return ListTracksResult { success: true, tracks: vec![], error: None };
+    }
+
+    let mut names: Vec<String> = Vec::new();
+
+    match fs::read_dir(&tracks_dir) {
+        Ok(entries) => {
+            for entry in entries.filter_map(|e| e.ok()) {
+                let path = entry.path();
+                if path.is_dir() && path.join("track.yaml").exists() {
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                        names.push(name.to_string());
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            return ListTracksResult {
+                success: false,
+                tracks: vec![],
+                error: Some(format!("Failed to read tracks directory: {}", e)),
+            };
+        }
+    }
+
+    names.sort();
+    ListTracksResult { success: true, tracks: names, error: None }
 }

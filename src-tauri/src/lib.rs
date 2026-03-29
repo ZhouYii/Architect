@@ -2,7 +2,7 @@ mod commands;
 
 use commands::cli::invoke_cli;
 use commands::versioning::{compute_tree_hash, create_version_archive, restore_from_archive};
-use commands::workspace::{read_workspace, write_files};
+use commands::workspace::{read_workspace, write_files, read_track, list_tracks};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -12,6 +12,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_workspace,
             write_files,
+            read_track,
+            list_tracks,
             compute_tree_hash,
             create_version_archive,
             restore_from_archive,

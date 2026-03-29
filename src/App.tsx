@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import './styles/globals.css';
 import { Canvas } from './modules/canvas/index.js';
-import { Toolbar, SidePanel } from './modules/ui/index.js';
+import { Toolbar, SidePanel, MergeConflictView } from './modules/ui/index.js';
 import { useDesignStore } from './modules/store/store.js';
 import {
   setWorkspacePath,
@@ -108,6 +108,8 @@ export function App() {
         </div>
         <SidePanel />
       </div>
+      {/* Phase 5: merge conflict resolution modal */}
+      <MergeConflictView />
     </div>
   );
 }

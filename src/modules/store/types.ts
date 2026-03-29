@@ -247,14 +247,22 @@ export interface CodeGraph {
   scanned_at: string;
 }
 
-// ─── Tracks (multi-track content system) ─────────────────────────────────────
+// ─── Tracks (design branches) ─────────────────────────────────────────────────
 
-export interface Track {
-  id: string;
+export interface TrackInfo {
   name: string;
-  canvas_ids: string[];
-  color?: string;
-  active: boolean;
+  forked_from: number;   // last_major_version at fork time
+  forked_at: string;     // ISO timestamp
+  status: 'active' | 'merged' | 'archived';
+  description?: string;
+}
+
+export interface MergeConflict {
+  node_id: string;
+  canvas_id: string;
+  main_version: DesignNode;
+  track_version: DesignNode;
+  resolution?: 'main' | 'track';
 }
 
 // ─── UI State ─────────────────────────────────────────────────────────────────

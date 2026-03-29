@@ -4,7 +4,9 @@ import { TOKENS } from '../../styles/theme.js';
 import type { BreadcrumbSegment } from '../store/selectors.js';
 import { scan } from '../scanner/index.js';
 import { VersionIndicator } from './VersionIndicator.js';
+import { TrackSwitcher } from './TrackSwitcher.js';
 import { cutVersion } from '../workspace/versioning.js';
+import { createTrack, switchTrack } from '../workspace/tracks.js';
 
 export function Toolbar() {
   const currentPath = useDesignStore((s) => s.ui.current_path);
@@ -15,6 +17,8 @@ export function Toolbar() {
   const setViewMode = useDesignStore((s) => s.setViewMode);
   const setCodeGraph = useDesignStore((s) => s.setCodeGraph);
   const toggleDeltaMode = useDesignStore((s) => s.toggleDeltaMode);
+  const activeTrack = useDesignStore((s) => s.active_track);
+  const tracks = useDesignStore((s) => s.tracks);
 
   const [isScanning, setIsScanning] = useState(false);
 
@@ -46,11 +50,74 @@ export function Toolbar() {
         });
         return;
       }
+
+      // Ctrl+B — new track
+      if (e.ctrlKey && (e.key === 'b' || e.key === 'B')) {
+        e.preventDefault();
+        const name = window.prompt('Track name:', `track-${Date.now()}`);
+        if (!name?.trim()) return;
+        const desc = window.prompt('Description (optional):', '') ?? '';
+        createTrack(name.trim(), desc.trim() || undefined).catch((err: unknown) => {
+          console.error('[toolbar] createTrack failed:', err);
+        });
+        return;
+      }
+
+      // Ctrl+[ — switch to previous track (or main)
+      if (e.ctrlKey && e.key === '[') {
+        e.preventDefault();
+        if (activeTrack !== null) {
+          // Go to main
+          switchTrack(null).catch((err: unknown) => {
+            console.error('[toolbar] switchTrack(null) failed:', err);
+          });
+        } else if (tracks.length > 0) {
+          // Go to first track
+          switchTrack(tracks[0].name).catch((err: unknown) => {
+            console.error('[toolbar] switchTrack failed:', err);
+          });
+        }
+        return;
+      }
+
+      // Ctrl+] — switch to next track
+      if (e.ctrlKey && e.key === ']') {
+        e.preventDefault();
+        if (activeTrack === null && tracks.length > 0) {
+          switchTrack(tracks[0].name).catch((err: unknown) => {
+            console.error('[toolbar] switchTrack failed:', err);
+          });
+        } else if (activeTrack !== null && tracks.length > 0) {
+          const idx = tracks.findIndex((t) => t.name === activeTrack);
+          const nextIdx = (idx + 1) % tracks.length;
+          switchTrack(tracks[nextIdx].name).catch((err: unknown) => {
+            console.error('[toolbar] switchTrack failed:', err);
+          });
+        }
+        return;
+      }
+
+      // Ctrl+M — merge active track to main
+      if (e.ctrlKey && (e.key === 'm' || e.key === 'M')) {
+        if (!activeTrack) return;
+        e.preventDefault();
+        if (!window.confirm(`Merge track "${activeTrack}" into main?`)) return;
+        import('../workspace/tracks.js')
+          .then(({ mergeTrack }) =>
+            mergeTrack(activeTrack).catch((err: unknown) => {
+              console.error('[toolbar] mergeTrack failed:', err);
+            })
+          )
+          .catch((err: unknown) => {
+            console.error('[toolbar] import tracks failed:', err);
+          });
+        return;
+      }
     }
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [toggleDeltaMode]);
+  }, [toggleDeltaMode, activeTrack, tracks]);
 
   const handleViewToggle = useCallback(
     async (mode: 'conceptual' | 'code') => {
@@ -186,8 +253,14 @@ export function Toolbar() {
         })}
       </nav>
 
-      {/* Right side: placeholders */}
+      {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        {/* Track switcher */}
+        <TrackSwitcher />
+
+        {/* Separator */}
+        <div style={{ width: 1, height: 18, background: TOKENS.border, flexShrink: 0 }} />
+
         {/* Version indicator */}
         <VersionIndicator />
 
