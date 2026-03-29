@@ -1,0 +1,142 @@
+/* ─── React Flow Base Overrides ───────────────────────────────────────────── */
+
+.react-flow {
+  background-color: var(--color-bg-base);
+}
+
+/* Dot grid background */
+.react-flow__background {
+  background-color: var(--color-bg-base);
+}
+.react-flow__background pattern circle,
+.react-flow__background pattern rect {
+  fill: #1A1C24;
+}
+
+/* ─── Nodes ───────────────────────────────────────────────────────────────── */
+.react-flow__node {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+
+.react-flow__node.selected > .react-flow__node-default,
+.react-flow__node.selected > div {
+  box-shadow: 0 0 0 2px var(--color-accent) !important;
+}
+
+/* ─── Edges / Arrows ──────────────────────────────────────────────────────── */
+.react-flow__edge-path {
+  stroke: #3A3D4A;
+  stroke-width: 1.5;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--color-accent);
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: #5C6170;
+}
+
+.react-flow__arrowhead path {
+  fill: #3A3D4A;
+}
+.react-flow__edge.selected .react-flow__arrowhead path {
+  fill: var(--color-accent);
+}
+
+/* ─── Handles ─────────────────────────────────────────────────────────────── */
+.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  background: var(--color-bg-surface-raised);
+  border: 1px solid var(--color-border-focus);
+  border-radius: 50%;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.react-flow__handle:hover,
+.react-flow__handle-connecting {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* ─── Controls ────────────────────────────────────────────────────────────── */
+.react-flow__controls {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.react-flow__controls-button {
+  background: var(--color-bg-surface);
+  border-bottom: 1px solid var(--color-border);
+  border-right: none;
+  border-left: none;
+  border-top: none;
+  fill: var(--color-text-secondary);
+  width: 28px;
+  height: 28px;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--color-bg-surface-raised);
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none;
+}
+
+/* ─── Minimap ─────────────────────────────────────────────────────────────── */
+.react-flow__minimap {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(12, 14, 18, 0.6);
+}
+
+.react-flow__minimap-node {
+  fill: var(--color-bg-surface-raised);
+  stroke: var(--color-border);
+}
+
+/* ─── Selection Box ───────────────────────────────────────────────────────── */
+.react-flow__selection {
+  background: rgba(124, 139, 245, 0.05);
+  border: 1px solid var(--color-accent);
+}
+
+/* ─── Node label ──────────────────────────────────────────────────────────── */
+.react-flow__node-default,
+.react-flow__node-input,
+.react-flow__node-output {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  padding: 0;
+}
+
+/* ─── Edge label pill ─────────────────────────────────────────────────────── */
+.edge-label-pill {
+  background: var(--color-bg-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ─── Proposed dashed overlay ─────────────────────────────────────────────── */
+.node-proposed .node-frame {
+  border-style: dashed !important;
+}

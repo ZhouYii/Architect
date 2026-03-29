@@ -1,18 +1,21 @@
 mod commands;
 
+use commands::cli::invoke_cli;
+use commands::versioning::{compute_tree_hash, create_version_archive, restore_from_archive};
+use commands::workspace::{read_workspace, write_files};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            commands::read_workspace,
-            commands::write_files,
-            commands::compute_tree_hash,
-            commands::create_version_archive,
-            commands::restore_from_archive,
-            commands::detect_changes,
-            commands::invoke_cli,
+            read_workspace,
+            write_files,
+            compute_tree_hash,
+            create_version_archive,
+            restore_from_archive,
+            invoke_cli,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
