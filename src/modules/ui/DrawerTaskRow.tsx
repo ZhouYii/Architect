@@ -1,7 +1,9 @@
 // ─── DrawerTaskRow ────────────────────────────────────────────────────────────
 
+import { useCallback } from 'react';
 import { useDesignStore } from '../store/store.js';
 import { TOKENS } from '../../styles/theme.js';
+import { approveTask } from '../orchestrator/executor.js';
 import type { ImplTask, ImplTaskStatus } from '../store/types.js';
 
 // ─── Status icons ─────────────────────────────────────────────────────────────
@@ -84,6 +86,78 @@ function ComplexityDot({ complexity }: { complexity?: string }) {
   );
 }
 
+// ─── Attempt pills (Phase 7) ──────────────────────────────────────────────────
+// Shows attempt history inline: ✗ attempt 1 (oc)  ✗ attempt 2 (oc)  ✓ attempt 3 (sn)
+
+const ATTEMPT_ABBREVS: Record<number, string> = {
+  1: 'oc',
+  2: 'oc',
+  3: 'sn',
+  4: 'op',
+};
+
+function AttemptPills({ task }: { task: ImplTask }) {
+  const { attempts } = task;
+  if (attempts.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+      {attempts.map((a) => {
+        const ok = a.result === 'success';
+        const abbrev = ATTEMPT_ABBREVS[a.attempt] ?? `a${a.attempt}`;
+        const color = ok ? TOKENS.statusGreen : TOKENS.statusRed;
+        return (
+          <span
+            key={a.attempt}
+            style={{
+              fontSize: 9,
+              padding: '1px 4px',
+              borderRadius: 6,
+              background: `${color}18`,
+              color,
+              border: `1px solid ${color}33`,
+              fontFamily: 'monospace',
+              lineHeight: 1.4,
+            }}
+            title={a.message ?? (ok ? 'passed' : 'failed')}
+          >
+            {ok ? '✓' : '✗'}{abbrev}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Escalation indicator (Phase 7) ──────────────────────────────────────────
+// Shows the current agent with an arrow when escalated
+
+function EscalationPill({ task }: { task: ImplTask }) {
+  if (task.status !== 'escalated') return null;
+
+  const attemptCount = task.attempts.length;
+  const abbrev = attemptCount >= 4 ? 'op' : attemptCount >= 3 ? 'sn' : 'oc';
+  const label = attemptCount >= 4 ? 'opus' : attemptCount >= 3 ? 'sonnet' : 'opencode';
+
+  return (
+    <span
+      style={{
+        fontSize: 10,
+        padding: '1px 6px',
+        borderRadius: 8,
+        background: `${TOKENS.statusBlue}18`,
+        color: TOKENS.statusBlue,
+        border: `1px solid ${TOKENS.statusBlue}33`,
+        fontWeight: 500,
+        flexShrink: 0,
+      }}
+      title={`Escalated to ${label} (attempt ${attemptCount + 1})`}
+    >
+      oc → {abbrev} ⬆
+    </span>
+  );
+}
+
 // ─── DrawerTaskRow ────────────────────────────────────────────────────────────
 
 interface DrawerTaskRowProps {
@@ -95,8 +169,10 @@ interface DrawerTaskRowProps {
 export function DrawerTaskRow({ task, index, allTasks }: DrawerTaskRowProps) {
   const selectedTaskId = useDesignStore((s) => s.ui.selected_task_id);
   const setSelectedTask = useDesignStore((s) => s.setSelectedTask);
+  const executionMode = useDesignStore((s) => s.execution_mode);
 
   const isSelected = selectedTaskId === task.id;
+  const isManualMode = executionMode === 'manual';
 
   // Determine if blocked: has depends_on that aren't done
   const isBlocked =
@@ -114,6 +190,14 @@ export function DrawerTaskRow({ task, index, allTasks }: DrawerTaskRowProps) {
     : zebra
     ? TOKENS.bgSurface
     : TOKENS.bgSurfaceRaised;
+
+  const handleApprove = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      approveTask(task.id);
+    },
+    [task.id]
+  );
 
   return (
     <button
@@ -161,7 +245,13 @@ export function DrawerTaskRow({ task, index, allTasks }: DrawerTaskRowProps) {
         {task.title ?? task.id}
       </span>
 
-      {/* Agent pill */}
+      {/* Attempt history pills (Phase 7) */}
+      <AttemptPills task={task} />
+
+      {/* Escalation indicator (Phase 7) */}
+      <EscalationPill task={task} />
+
+      {/* Agent pill — shows current agent */}
       <AgentPill agent={task.agent} />
 
       {/* File indicator */}
@@ -180,6 +270,29 @@ export function DrawerTaskRow({ task, index, allTasks }: DrawerTaskRowProps) {
           title={task.file}
         >
           {task.file.split('/').pop()}
+        </span>
+      )}
+
+      {/* Approve button (manual mode only) */}
+      {isManualMode && task.status === 'queued' && !isBlocked && (
+        <span
+          role="button"
+          onClick={handleApprove}
+          style={{
+            fontSize: 10,
+            padding: '1px 7px',
+            borderRadius: 6,
+            background: `${TOKENS.statusGreen}18`,
+            color: TOKENS.statusGreen,
+            border: `1px solid ${TOKENS.statusGreen}44`,
+            cursor: 'pointer',
+            fontWeight: 600,
+            flexShrink: 0,
+            userSelect: 'none',
+          }}
+          title="Approve this task for execution"
+        >
+          Approve
         </span>
       )}
 

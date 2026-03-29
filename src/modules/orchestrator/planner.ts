@@ -179,6 +179,107 @@ async function callPlanningAgent(userMessage: string): Promise<string | null> {
   }
 }
 
+// ─── Fix Plan Generation (Phase 8) ────────────────────────────────────────────
+
+const FIX_PLAN_PROMPT = `\
+You are an expert software engineer tasked with fixing failed verification results.
+
+You will receive a list of failed implementation tasks along with their error details.
+Your job is to produce a new set of fix tasks as a YAML task DAG.
+
+Each fix task should:
+1. Target the specific failure described
+2. Reference the original task id in its title
+3. Include clear instructions about what to fix
+
+Use the same YAML format as implementation tasks. Respond with a brief summary then a single yaml block.
+`;
+
+/**
+ * Generate fix tasks for failed verifications.
+ * Each failed task gets a corresponding fix task that targets its specific failure.
+ * The fix tasks are appended to the existing DAG.
+ */
+export async function generateFixPlan(
+  failedTasks: ImplTask[]
+): Promise<ImplTask[]> {
+  if (failedTasks.length === 0) return [];
+
+  const { selectedProviderId } = useDesignStore.getState();
+  const now = new Date().toISOString();
+
+  // Build a descriptive context for the planner
+  const lines: string[] = [
+    `Fix the following ${failedTasks.length} failed task(s):`,
+    '',
+    '## Failed Tasks',
+    '',
+  ];
+
+  for (const task of failedTasks) {
+    lines.push(`### ${task.title ?? task.id}`);
+    lines.push(`- id: ${task.id}`);
+    lines.push(`- file: ${task.file ?? '(unknown)'}`);
+    if (task.correct_when) lines.push(`- correct_when: ${task.correct_when}`);
+    const lastAttempt = task.attempts[task.attempts.length - 1];
+    if (lastAttempt?.message) {
+      lines.push(`- last_error: ${lastAttempt.message}`);
+    }
+    if (lastAttempt?.output) {
+      lines.push(`- output: ${lastAttempt.output.slice(0, 300)}`);
+    }
+    lines.push('');
+  }
+
+  const userMessage = lines.join('\n');
+
+  if (selectedProviderId !== 'mock') {
+    try {
+      const { getProvider } = await import('../agent/index.js');
+      const provider = getProvider(selectedProviderId);
+      if (provider) {
+        const response = await provider.chat(userMessage, undefined, {
+          systemPrompt: FIX_PLAN_PROMPT,
+        });
+        const tasks = parseTaskDAG(response);
+        if (tasks.length > 0) {
+          console.info(`[planner] Fix plan: LLM returned ${tasks.length} fix tasks`);
+          return tasks;
+        }
+      }
+    } catch (err) {
+      console.warn('[planner] generateFixPlan LLM call failed, using mock:', err);
+    }
+  }
+
+  // Mock fallback: one fix task per failed task
+  return failedTasks.map((task) => ({
+    id: `fix-${task.id}-${Date.now()}`,
+    title: `Fix: ${task.title ?? task.id}`,
+    method: task.method ?? '',
+    type: 'implementation' as const,
+    complexity: 'medium' as const,
+    design_node: task.design_node ?? task.node_id,
+    agent: 'smart' as const,
+    file: task.file ?? '',
+    test_file: task.test_file ?? '',
+    prompt: [
+      `Fix the failure in task "${task.title ?? task.id}".`,
+      '',
+      'Correct when:',
+      task.correct_when ?? '(see original task)',
+    ].join('\n'),
+    correct_when: task.correct_when ?? '',
+    depends_on: [],
+    canvas_id: task.canvas_id,
+    node_id: task.node_id,
+    status: 'queued' as const,
+    attempts: [],
+    created_at: now,
+    updated_at: now,
+  }));
+}
+
 export async function planImplementation(
   fromVersion: number,
   toVersion: number

@@ -6,6 +6,7 @@ import type {
   ChatMessage,
   CodeGraph,
   DesignNode,
+  ImplPhase,
   ImplTask,
   ImplTaskStatus,
   MergeConflict,
@@ -34,6 +35,9 @@ export interface DesignStoreState {
   merge_conflicts: MergeConflict[];
   // Phase 6: implementation tasks
   impl_tasks: ImplTask[];
+  // Phase 7: execution engine
+  execution_mode: 'idle' | 'manual' | 'autopilot' | 'paused';
+  max_parallel: number;
 }
 
 // ─── Actions Shape ────────────────────────────────────────────────────────────
@@ -99,6 +103,15 @@ export interface DesignStoreActions {
   setDrawerOpen: (open: boolean) => void;
   setDrawerHeight: (height: number) => void;
   updateTaskStatus: (taskId: string, status: ImplTaskStatus) => void;
+
+  // Phase 7: execution engine
+  setExecutionMode: (mode: 'idle' | 'manual' | 'autopilot' | 'paused') => void;
+  setMaxParallel: (n: number) => void;
+
+  // Phase 8: pipeline lifecycle
+  setImplPhase: (phase: ImplPhase) => void;
+  setCompletionReport: (report: string | null) => void;
+  appendFixTasks: (tasks: ImplTask[]) => void;
 }
 
 export type DesignStore = DesignStoreState & DesignStoreActions;
@@ -123,6 +136,9 @@ const INITIAL_STATE: DesignStoreState = {
     drawer_height: 300,
     selected_task_id: null,
     impl_plan_id: null,
+    // Phase 8
+    impl_phase: 'idle',
+    completion_report: null,
   },
   // Phase 4
   agent_changesets: [],
@@ -135,6 +151,9 @@ const INITIAL_STATE: DesignStoreState = {
   merge_conflicts: [],
   // Phase 6
   impl_tasks: [],
+  // Phase 7
+  execution_mode: 'idle',
+  max_parallel: 3,
 };
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -406,13 +425,47 @@ export const useDesignStore = create<DesignStore>()(
         state.ui.drawer_height = Math.max(80, Math.min(height, 600));
       }),
 
-    updateTaskStatus: (taskId, status) =>
+    updateTaskStatus: (taskId, status) => {
       set((state) => {
         const task = state.impl_tasks.find((t) => t.id === taskId);
         if (task) {
           task.status = status;
           task.updated_at = new Date().toISOString();
         }
+      });
+      // Persist status file asynchronously — import lazily to avoid circular dep
+      import('../orchestrator/logger.js')
+        .then(({ writeImplStatusFile }) => writeImplStatusFile())
+        .catch(() => { /* no workspace open yet */ });
+    },
+
+    // ── Phase 7: Execution engine ─────────────────────────────────────────
+
+    setExecutionMode: (mode) =>
+      set((state) => {
+        state.execution_mode = mode;
+      }),
+
+    setMaxParallel: (n) =>
+      set((state) => {
+        state.max_parallel = Math.max(1, Math.min(n, 10));
+      }),
+
+    // ── Phase 8: Pipeline lifecycle ───────────────────────────────────────
+
+    setImplPhase: (phase) =>
+      set((state) => {
+        state.ui.impl_phase = phase;
+      }),
+
+    setCompletionReport: (report) =>
+      set((state) => {
+        state.ui.completion_report = report;
+      }),
+
+    appendFixTasks: (tasks) =>
+      set((state) => {
+        state.impl_tasks = [...state.impl_tasks, ...tasks];
       }),
   }))
 );

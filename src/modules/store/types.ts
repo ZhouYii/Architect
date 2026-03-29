@@ -282,6 +282,14 @@ export interface MergeConflict {
 
 export type ViewMode = 'conceptual' | 'code';
 
+/** Phase 8: lifecycle phase of the implementation pipeline */
+export type ImplPhase =
+  | 'idle'
+  | 'planning'
+  | 'executing'
+  | 'verifying'
+  | 'complete';
+
 export interface UIState {
   selected_node_id: string | null;
   current_path: string[];      // stack of canvas IDs, [0] = root
@@ -297,6 +305,9 @@ export interface UIState {
   drawer_height: number;
   selected_task_id: string | null;
   impl_plan_id: string | null;
+  // Phase 8: pipeline lifecycle + completion report
+  impl_phase: ImplPhase;
+  completion_report: string | null;
 }
 
 // ─── Aggregate / Computed ─────────────────────────────────────────────────────

@@ -1,14 +1,241 @@
-// ─── Implementation Drawer (Phase 6) ─────────────────────────────────────────
+// ─── Implementation Drawer (Phase 6 + 7 + 8) ─────────────────────────────────
 //
 // Collapsible bottom drawer displaying the implementation task DAG.
 // - Collapsed: thin bar with summary + Autopilot button
 // - Expanded: scrollable task list with drag-to-resize handle
+// Phase 7 additions:
+// - Autopilot / Manual / Pause / Stop controls (live execution engine)
+// - Keyboard: Space = start/pause, A = toggle autopilot mode
+// Phase 8 additions:
+// - Completion summary bar with phase indicator
+// - Verify / Fix Issues / Update Design buttons
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDesignStore } from '../store/store.js';
 import { TOKENS } from '../../styles/theme.js';
 import { DrawerTaskRow } from './DrawerTaskRow.js';
-import type { ImplTaskStatus } from '../store/types.js';
+import {
+  startExecution,
+  pauseExecution,
+  resumeExecution,
+  stopExecution,
+} from '../orchestrator/executor.js';
+import { runVerification } from '../orchestrator/verification.js';
+import { generateFixPlan } from '../orchestrator/planner.js';
+import { generatePostImplChangeset, applyPostImplChangeset } from '../orchestrator/post-impl.js';
+import { generateCompletionReport } from '../orchestrator/report.js';
+
+// ─── Phase pill ───────────────────────────────────────────────────────────────
+
+function PhasePill({ phase }: { phase: string }) {
+  const color =
+    phase === 'complete'
+      ? TOKENS.statusGreen
+      : phase === 'verifying'
+      ? TOKENS.accent
+      : phase === 'executing'
+      ? TOKENS.statusAmber
+      : phase === 'planning'
+      ? TOKENS.statusBlue
+      : TOKENS.textTertiary;
+
+  const label =
+    phase === 'idle'
+      ? 'Idle'
+      : phase === 'planning'
+      ? 'Planning'
+      : phase === 'executing'
+      ? 'Executing'
+      : phase === 'verifying'
+      ? 'Verifying'
+      : 'Complete';
+
+  return (
+    <span
+      style={{
+        fontSize: 10,
+        fontWeight: 600,
+        padding: '1px 7px',
+        borderRadius: 10,
+        background: `${color}22`,
+        color,
+        border: `1px solid ${color}44`,
+        letterSpacing: '0.03em',
+        flexShrink: 0,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+// ─── Execution controls (Phase 7) ────────────────────────────────────────────
+
+function ExecutionControls({ compact = false }: { compact?: boolean }) {
+  const executionMode = useDesignStore((s) => s.execution_mode);
+  const implTasks = useDesignStore((s) => s.impl_tasks);
+  const maxParallel = useDesignStore((s) => s.max_parallel);
+
+  const hasTasks = implTasks.length > 0;
+  const isIdle = executionMode === 'idle';
+  const isPaused = executionMode === 'paused';
+  const isRunning = executionMode === 'autopilot' || executionMode === 'manual';
+
+  const handleAutopilot = useCallback(() => {
+    if (isRunning) return;
+    startExecution('autopilot', { max_parallel: maxParallel }).catch(console.error);
+  }, [isRunning, maxParallel]);
+
+  const handleManual = useCallback(() => {
+    if (isRunning) return;
+    startExecution('manual', { max_parallel: maxParallel }).catch(console.error);
+  }, [isRunning, maxParallel]);
+
+  const handlePauseResume = useCallback(() => {
+    if (isRunning) {
+      pauseExecution();
+    } else if (isPaused) {
+      resumeExecution({ max_parallel: maxParallel });
+    }
+  }, [isRunning, isPaused, maxParallel]);
+
+  const handleStop = useCallback(() => {
+    stopExecution();
+  }, []);
+
+  if (compact) {
+    // Collapsed bar: single button that toggles autopilot
+    return (
+      <button
+        disabled={!hasTasks}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (isRunning) {
+            pauseExecution();
+          } else if (isPaused) {
+            resumeExecution({ max_parallel: maxParallel });
+          } else {
+            handleAutopilot();
+          }
+        }}
+        style={{
+          fontSize: 11,
+          padding: '2px 10px',
+          background: isRunning
+            ? `${TOKENS.statusAmber}22`
+            : isPaused
+            ? `${TOKENS.statusBlue}22`
+            : `${TOKENS.accent}18`,
+          color: isRunning
+            ? TOKENS.statusAmber
+            : isPaused
+            ? TOKENS.statusBlue
+            : hasTasks
+            ? TOKENS.accent
+            : TOKENS.textTertiary,
+          border: `1px solid ${isRunning ? TOKENS.statusAmber : isPaused ? TOKENS.statusBlue : TOKENS.accent}44`,
+          borderRadius: 4,
+          cursor: hasTasks ? 'pointer' : 'not-allowed',
+          opacity: hasTasks ? 1 : 0.45,
+          flexShrink: 0,
+          fontWeight: 500,
+        }}
+        title={
+          !hasTasks
+            ? 'No tasks — generate a plan first'
+            : isRunning
+            ? 'Pause execution (Space)'
+            : isPaused
+            ? 'Resume execution (Space)'
+            : 'Start autopilot (Space)'
+        }
+      >
+        {isRunning ? '⏸ Running' : isPaused ? '▶ Resume' : '▶ Autopilot'}
+      </button>
+    );
+  }
+
+  // Expanded bar: full controls
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      {(isIdle || isPaused) && (
+        <>
+          <button
+            disabled={!hasTasks || isRunning}
+            onClick={isIdle ? handleAutopilot : () => resumeExecution({ max_parallel: maxParallel })}
+            style={_btnStyle(TOKENS.accent, hasTasks && !isRunning)}
+            title="Start autopilot — runs all tasks automatically (Space)"
+          >
+            {isPaused ? '▶ Resume' : '▶ Auto'}
+          </button>
+          {isIdle && (
+            <button
+              disabled={!hasTasks || isRunning}
+              onClick={handleManual}
+              style={_btnStyle(TOKENS.statusBlue, hasTasks && !isRunning)}
+              title="Manual mode — approve tasks one by one"
+            >
+              Manual
+            </button>
+          )}
+        </>
+      )}
+
+      {isRunning && (
+        <button
+          onClick={handlePauseResume}
+          style={_btnStyle(TOKENS.statusAmber, true)}
+          title="Pause execution (Space)"
+        >
+          ⏸ Pause
+        </button>
+      )}
+
+      {(isRunning || isPaused) && (
+        <button
+          onClick={handleStop}
+          style={_btnStyle(TOKENS.statusRed, true)}
+          title="Stop execution"
+        >
+          ⏹ Stop
+        </button>
+      )}
+
+      {/* Execution mode badge */}
+      {!isIdle && (
+        <span
+          style={{
+            fontSize: 10,
+            padding: '1px 6px',
+            borderRadius: 8,
+            background: isRunning ? `${TOKENS.statusAmber}22` : `${TOKENS.statusBlue}22`,
+            color: isRunning ? TOKENS.statusAmber : TOKENS.statusBlue,
+            border: `1px solid ${isRunning ? TOKENS.statusAmber : TOKENS.statusBlue}44`,
+            fontWeight: 500,
+            flexShrink: 0,
+          }}
+        >
+          {executionMode}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function _btnStyle(color: string, enabled: boolean): React.CSSProperties {
+  return {
+    fontSize: 11,
+    padding: '2px 8px',
+    background: enabled ? `${color}18` : TOKENS.bgSurfaceRaised,
+    color: enabled ? color : TOKENS.textTertiary,
+    border: `1px solid ${enabled ? color : TOKENS.border}44`,
+    borderRadius: 4,
+    cursor: enabled ? 'pointer' : 'not-allowed',
+    opacity: enabled ? 1 : 0.4,
+    fontWeight: 500,
+    flexShrink: 0,
+  };
+}
 
 // ─── Progress bar ─────────────────────────────────────────────────────────────
 
@@ -93,23 +320,7 @@ function CollapsedBar({
 
       <div style={{ flex: 1 }} />
 
-      <button
-        disabled
-        style={{
-          fontSize: 11,
-          padding: '2px 10px',
-          background: TOKENS.bgSurfaceRaised,
-          color: TOKENS.textTertiary,
-          border: `1px solid ${TOKENS.border}`,
-          borderRadius: 4,
-          cursor: 'not-allowed',
-          opacity: 0.5,
-        }}
-        onClick={(e) => e.stopPropagation()}
-        title="Autopilot (Phase 7)"
-      >
-        Autopilot
-      </button>
+      <ExecutionControls compact />
     </div>
   );
 }
@@ -152,6 +363,71 @@ function DragHandle({
   );
 }
 
+// ─── Completion summary bar (Phase 8) ────────────────────────────────────────
+
+function CompletionSummaryBar({
+  report,
+  onDismiss,
+}: {
+  report: string;
+  onDismiss: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div
+      style={{
+        background: `${TOKENS.statusGreen}18`,
+        borderTop: `1px solid ${TOKENS.statusGreen}44`,
+        flexShrink: 0,
+      }}
+    >
+      <div
+        style={{
+          padding: '4px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          cursor: 'pointer',
+        }}
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <span style={{ fontSize: 11, color: TOKENS.statusGreen, fontWeight: 600 }}>
+          Implementation Complete
+        </span>
+        <span style={{ flex: 1 }} />
+        <button
+          onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+          style={{ fontSize: 11, color: TOKENS.textTertiary, cursor: 'pointer', padding: '0 4px' }}
+          title="Dismiss report"
+        >
+          ✕
+        </button>
+        <span style={{ fontSize: 10, color: TOKENS.textTertiary }}>
+          {expanded ? '▲' : '▼'}
+        </span>
+      </div>
+      {expanded && (
+        <pre
+          style={{
+            margin: 0,
+            padding: '8px 14px',
+            fontSize: 10,
+            color: TOKENS.textSecondary,
+            fontFamily: 'monospace',
+            whiteSpace: 'pre-wrap',
+            maxHeight: 200,
+            overflowY: 'auto',
+            borderTop: `1px solid ${TOKENS.border}`,
+          }}
+        >
+          {report}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 // ─── Expanded content ─────────────────────────────────────────────────────────
 
 function ExpandedContent({
@@ -164,6 +440,69 @@ function ExpandedContent({
   onCollapse: () => void;
 }) {
   const implTasks = useDesignStore((s) => s.impl_tasks);
+  const implPhase = useDesignStore((s) => s.ui.impl_phase);
+  const completionReport = useDesignStore((s) => s.ui.completion_report);
+  const setImplPhase = useDesignStore((s) => s.setImplPhase);
+  const setCompletionReport = useDesignStore((s) => s.setCompletionReport);
+  const appendFixTasks = useDesignStore((s) => s.appendFixTasks);
+
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isFixing, setIsFixing] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // ── Verify handler ──────────────────────────────────────────────────────────
+  const handleVerify = useCallback(async () => {
+    setIsVerifying(true);
+    setImplPhase('verifying');
+    try {
+      const results = await runVerification(implTasks);
+      const report = generateCompletionReport(implTasks, results);
+      setCompletionReport(report.formattedText);
+      setImplPhase('complete');
+    } catch (err) {
+      console.error('[drawer] verification failed:', err);
+      setImplPhase('complete');
+    } finally {
+      setIsVerifying(false);
+    }
+  }, [implTasks, setImplPhase, setCompletionReport]);
+
+  // ── Fix Issues handler ──────────────────────────────────────────────────────
+  const handleFixIssues = useCallback(async () => {
+    const failedTasks = implTasks.filter((t) => t.status === 'failed');
+    if (failedTasks.length === 0) return;
+
+    setIsFixing(true);
+    try {
+      const fixTasks = await generateFixPlan(failedTasks);
+      if (fixTasks.length > 0) {
+        appendFixTasks(fixTasks);
+        setImplPhase('executing');
+        setCompletionReport(null);
+      }
+    } catch (err) {
+      console.error('[drawer] generateFixPlan failed:', err);
+    } finally {
+      setIsFixing(false);
+    }
+  }, [implTasks, appendFixTasks, setImplPhase, setCompletionReport]);
+
+  // ── Update Design handler ───────────────────────────────────────────────────
+  const handleUpdateDesign = useCallback(async () => {
+    setIsUpdating(true);
+    try {
+      const changeset = generatePostImplChangeset(implTasks);
+      applyPostImplChangeset(changeset);
+    } catch (err) {
+      console.error('[drawer] post-impl changeset failed:', err);
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [implTasks]);
+
+  const failedCount = implTasks.filter((t) => t.status === 'failed').length;
+  const allDone = implTasks.length > 0 &&
+    implTasks.every((t) => t.status === 'done' || t.status === 'failed' || t.status === 'escalated');
 
   return (
     <div
@@ -186,9 +525,11 @@ function ExpandedContent({
           background: '#3A3D4A',
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 600, color: TOKENS.textPrimary, flex: 1 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: TOKENS.textPrimary }}>
           Implementation{planId ? `: ${planId}` : ''}
         </span>
+
+        <PhasePill phase={implPhase} />
 
         {summary.total > 0 && (
           <>
@@ -204,22 +545,70 @@ function ExpandedContent({
           </>
         )}
 
-        <button
-          disabled
-          style={{
-            fontSize: 11,
-            padding: '2px 10px',
-            background: TOKENS.bgSurfaceRaised,
-            color: TOKENS.textTertiary,
-            border: `1px solid ${TOKENS.border}`,
-            borderRadius: 4,
-            cursor: 'not-allowed',
-            opacity: 0.5,
-          }}
-          title="Autopilot (Phase 7)"
-        >
-          Autopilot
-        </button>
+        <div style={{ flex: 1 }} />
+
+        {/* Phase 8: action buttons — shown when tasks are all terminal */}
+        {allDone && (
+          <>
+            <button
+              onClick={() => { void handleVerify(); }}
+              disabled={isVerifying}
+              style={{
+                fontSize: 11,
+                padding: '2px 9px',
+                background: `${TOKENS.accent}18`,
+                color: isVerifying ? TOKENS.textTertiary : TOKENS.accent,
+                border: `1px solid ${TOKENS.accent}44`,
+                borderRadius: 4,
+                cursor: isVerifying ? 'wait' : 'pointer',
+                flexShrink: 0,
+              }}
+              title="Run verification phase on completed tasks"
+            >
+              {isVerifying ? 'Verifying…' : 'Verify'}
+            </button>
+
+            {failedCount > 0 && (
+              <button
+                onClick={() => { void handleFixIssues(); }}
+                disabled={isFixing}
+                style={{
+                  fontSize: 11,
+                  padding: '2px 9px',
+                  background: `${TOKENS.statusAmber}18`,
+                  color: isFixing ? TOKENS.textTertiary : TOKENS.statusAmber,
+                  border: `1px solid ${TOKENS.statusAmber}44`,
+                  borderRadius: 4,
+                  cursor: isFixing ? 'wait' : 'pointer',
+                  flexShrink: 0,
+                }}
+                title={`Generate fix tasks for ${failedCount} failed task(s)`}
+              >
+                {isFixing ? 'Generating…' : `Fix Issues (${failedCount})`}
+              </button>
+            )}
+
+            <button
+              onClick={() => { void handleUpdateDesign(); }}
+              disabled={isUpdating}
+              style={{
+                fontSize: 11,
+                padding: '2px 9px',
+                background: `${TOKENS.statusGreen}18`,
+                color: isUpdating ? TOKENS.textTertiary : TOKENS.statusGreen,
+                border: `1px solid ${TOKENS.statusGreen}44`,
+                borderRadius: 4,
+                cursor: isUpdating ? 'wait' : 'pointer',
+                flexShrink: 0,
+              }}
+              title="Apply post-implementation changeset to design"
+            >
+              {isUpdating ? 'Updating…' : 'Update Design'}
+            </button>
+          </>
+        )}
+
+        <ExecutionControls />
 
         <button
           onClick={onCollapse}
@@ -234,6 +623,14 @@ function ExpandedContent({
           ▼
         </button>
       </div>
+
+      {/* Completion report bar (Phase 8) */}
+      {completionReport && (
+        <CompletionSummaryBar
+          report={completionReport}
+          onDismiss={() => setCompletionReport(null)}
+        />
+      )}
 
       {/* Task list */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -265,9 +662,43 @@ export function Drawer() {
   const drawerHeight = useDesignStore((s) => s.ui.drawer_height);
   const planId = useDesignStore((s) => s.ui.impl_plan_id);
   const implTasks = useDesignStore((s) => s.impl_tasks);
+  const executionMode = useDesignStore((s) => s.execution_mode);
+  const maxParallel = useDesignStore((s) => s.max_parallel);
   const toggleDrawer = useDesignStore((s) => s.toggleDrawer);
   const setDrawerHeight = useDesignStore((s) => s.setDrawerHeight);
   const setDrawerOpen = useDesignStore((s) => s.setDrawerOpen);
+
+  // ── Keyboard shortcuts ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't fire when user is typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        const mode = executionMode;
+        if (mode === 'idle') {
+          startExecution('autopilot', { max_parallel: maxParallel }).catch(console.error);
+        } else if (mode === 'autopilot' || mode === 'manual') {
+          pauseExecution();
+        } else if (mode === 'paused') {
+          resumeExecution({ max_parallel: maxParallel });
+        }
+      }
+
+      if (e.key === 'a' || e.key === 'A') {
+        const mode = executionMode;
+        if (mode === 'idle') {
+          // Toggle to autopilot
+          startExecution('autopilot', { max_parallel: maxParallel }).catch(console.error);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [executionMode, maxParallel]);
 
   const dragStartY = useRef<number | null>(null);
   const dragStartHeight = useRef<number>(drawerHeight);
