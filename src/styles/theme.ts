@@ -47,6 +47,25 @@ export const TOKENS = {
   accentDim:       '#292D4A',
 } as const;
 
+// Light theme token values
+export const TOKENS_LIGHT = {
+  bgBase:          '#F5F6FA',
+  bgSurface:       '#FFFFFF',
+  bgSurfaceRaised: '#F0F1F7',
+  border:          '#D1D4E0',
+  borderFocus:     '#A8ABBE',
+  textPrimary:     '#1A1C26',
+  textSecondary:   '#4A4F66',
+  textTertiary:    '#8B90A8',
+  textGhost:       '#C4C8D8',
+  statusAmber:     '#C97A1A',
+  statusGreen:     '#1D9C52',
+  statusBlue:      '#2B5DC8',
+  statusRed:       '#C82B2B',
+  accent:          '#4A5CD8',
+  accentDim:       '#E0E4FF',
+} as const;
+
 // Status → color mapping
 export const STATUS_COLORS: Record<string, string> = {
   clean:       TOKENS.border,
@@ -71,27 +90,30 @@ export const BLOCK_ICONS: Record<string, string> = {
   config:      '○',
 };
 
-// Inject CSS variables into :root
-export function injectTheme(): void {
+// Inject CSS variables into :root (dark theme by default)
+export function injectTheme(mode: 'dark' | 'light' = 'dark'): void {
+  const t = mode === 'light' ? TOKENS_LIGHT : TOKENS;
   const css = `
     :root {
-      --color-bg-base: ${TOKENS.bgBase};
-      --color-bg-surface: ${TOKENS.bgSurface};
-      --color-bg-surface-raised: ${TOKENS.bgSurfaceRaised};
-      --color-border: ${TOKENS.border};
-      --color-border-focus: ${TOKENS.borderFocus};
-      --color-text-primary: ${TOKENS.textPrimary};
-      --color-text-secondary: ${TOKENS.textSecondary};
-      --color-text-tertiary: ${TOKENS.textTertiary};
-      --color-text-ghost: ${TOKENS.textGhost};
-      --color-status-amber: ${TOKENS.statusAmber};
-      --color-status-green: ${TOKENS.statusGreen};
-      --color-status-blue: ${TOKENS.statusBlue};
-      --color-status-red: ${TOKENS.statusRed};
-      --color-accent: ${TOKENS.accent};
-      --color-accent-dim: ${TOKENS.accentDim};
+      --color-bg-base: ${t.bgBase};
+      --color-bg-surface: ${t.bgSurface};
+      --color-bg-surface-raised: ${t.bgSurfaceRaised};
+      --color-border: ${t.border};
+      --color-border-focus: ${t.borderFocus};
+      --color-text-primary: ${t.textPrimary};
+      --color-text-secondary: ${t.textSecondary};
+      --color-text-tertiary: ${t.textTertiary};
+      --color-text-ghost: ${t.textGhost};
+      --color-status-amber: ${t.statusAmber};
+      --color-status-green: ${t.statusGreen};
+      --color-status-blue: ${t.statusBlue};
+      --color-status-red: ${t.statusRed};
+      --color-accent: ${t.accent};
+      --color-accent-dim: ${t.accentDim};
     }
   `;
+  const existing = document.getElementById('architect-theme');
+  if (existing) existing.remove();
   const style = document.createElement('style');
   style.id = 'architect-theme';
   style.textContent = css;

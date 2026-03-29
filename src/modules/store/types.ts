@@ -308,6 +308,8 @@ export interface UIState {
   // Phase 8: pipeline lifecycle + completion report
   impl_phase: ImplPhase;
   completion_report: string | null;
+  // Phase 11: Command palette
+  command_palette_open: boolean;
 }
 
 // ─── Aggregate / Computed ─────────────────────────────────────────────────────

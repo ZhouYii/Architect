@@ -97,7 +97,7 @@ function _claudeDecision(
  * @param config        Execution config from workspace (or defaults)
  */
 export function getNextAgent(
-  task: ImplTask,
+  _task: ImplTask,
   attemptNumber: number,
   config: Partial<EscalationConfig> = {}
 ): EscalationDecision {

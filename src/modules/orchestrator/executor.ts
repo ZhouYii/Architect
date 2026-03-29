@@ -88,7 +88,10 @@ export async function startExecution(
     await _runLoop(options);
   } finally {
     _running = false;
-    if (_mode !== 'paused') {
+    // _mode may have been set to 'paused' by pauseExecution() during the loop
+    // Cast through unknown to defeat TypeScript's narrowing from the outer scope
+    const currentMode = _mode as unknown as ExecutionMode;
+    if (currentMode !== 'paused') {
       _mode = 'idle';
       _setExecutionMode('idle');
     }

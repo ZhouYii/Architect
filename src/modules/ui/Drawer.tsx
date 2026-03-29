@@ -10,7 +10,7 @@
 // - Completion summary bar with phase indicator
 // - Verify / Fix Issues / Update Design buttons
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useDesignStore } from '../store/store.js';
 import { TOKENS } from '../../styles/theme.js';
 import { DrawerTaskRow } from './DrawerTaskRow.js';
@@ -662,43 +662,11 @@ export function Drawer() {
   const drawerHeight = useDesignStore((s) => s.ui.drawer_height);
   const planId = useDesignStore((s) => s.ui.impl_plan_id);
   const implTasks = useDesignStore((s) => s.impl_tasks);
-  const executionMode = useDesignStore((s) => s.execution_mode);
-  const maxParallel = useDesignStore((s) => s.max_parallel);
   const toggleDrawer = useDesignStore((s) => s.toggleDrawer);
   const setDrawerHeight = useDesignStore((s) => s.setDrawerHeight);
   const setDrawerOpen = useDesignStore((s) => s.setDrawerOpen);
 
-  // ── Keyboard shortcuts ──────────────────────────────────────────────────────
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // Don't fire when user is typing in an input/textarea
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-
-      if (e.code === 'Space') {
-        e.preventDefault();
-        const mode = executionMode;
-        if (mode === 'idle') {
-          startExecution('autopilot', { max_parallel: maxParallel }).catch(console.error);
-        } else if (mode === 'autopilot' || mode === 'manual') {
-          pauseExecution();
-        } else if (mode === 'paused') {
-          resumeExecution({ max_parallel: maxParallel });
-        }
-      }
-
-      if (e.key === 'a' || e.key === 'A') {
-        const mode = executionMode;
-        if (mode === 'idle') {
-          // Toggle to autopilot
-          startExecution('autopilot', { max_parallel: maxParallel }).catch(console.error);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [executionMode, maxParallel]);
+  // NOTE: Space/A keyboard shortcuts are now handled by useKeyboardShortcuts() in App.tsx.
 
   const dragStartY = useRef<number | null>(null);
   const dragStartHeight = useRef<number>(drawerHeight);

@@ -5,3 +5,4 @@ export { initWorkspace } from './init.js';
 export { loadWorkspace } from './load.js';
 export { cutVersion, loadVersion } from './versioning.js';
 export { createTrack, switchTrack, mergeTrack, listTracks, applyMerge } from './tracks.js';
+export { generateAgentGuide, writeAgentGuide } from './agent-guide.js';

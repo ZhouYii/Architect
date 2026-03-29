@@ -22,7 +22,132 @@
   --radius-md: 6px;
   --radius-lg: 10px;
   --transition-fast: 120ms ease;
+  --transition-status: 200ms ease;    /* status ring color fade */
+  --transition-delta: 200ms ease;     /* delta mode opacity */
+  --transition-drawer: 150ms ease-out; /* drawer open/close */
+  --transition-node-in: 200ms ease;   /* node appear */
+  --transition-node-out: 150ms ease;  /* node disappear */
 }
+
+/* ─── Light theme ─────────────────────────────────────────────────────────── */
+.light {
+  --color-bg-base: #F5F6FA;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-surface-raised: #F0F1F7;
+  --color-border: #D1D4E0;
+  --color-border-focus: #A8ABBE;
+  --color-text-primary: #1A1C26;
+  --color-text-secondary: #4A4F66;
+  --color-text-tertiary: #8B90A8;
+  --color-text-ghost: #C4C8D8;
+  --color-status-amber: #C97A1A;
+  --color-status-green: #1D9C52;
+  --color-status-blue: #2B5DC8;
+  --color-status-red: #C82B2B;
+  --color-accent: #4A5CD8;
+  --color-accent-dim: #E0E4FF;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) {
+    --color-bg-base: #F5F6FA;
+    --color-bg-surface: #FFFFFF;
+    --color-bg-surface-raised: #F0F1F7;
+    --color-border: #D1D4E0;
+    --color-border-focus: #A8ABBE;
+    --color-text-primary: #1A1C26;
+    --color-text-secondary: #4A4F66;
+    --color-text-tertiary: #8B90A8;
+    --color-text-ghost: #C4C8D8;
+    --color-status-amber: #C97A1A;
+    --color-status-green: #1D9C52;
+    --color-status-blue: #2B5DC8;
+    --color-status-red: #C82B2B;
+    --color-accent: #4A5CD8;
+    --color-accent-dim: #E0E4FF;
+  }
+}
+
+/* ─── Drawer slide transitions ────────────────────────────────────────────── */
+.drawer-enter {
+  opacity: 0;
+  transform: translateY(100%);
+}
+.drawer-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--transition-drawer), transform var(--transition-drawer);
+}
+.drawer-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+.drawer-exit-active {
+  opacity: 0;
+  transform: translateY(100%);
+  transition: opacity var(--transition-drawer), transform var(--transition-drawer);
+}
+
+/* ─── Node appear/disappear transitions ───────────────────────────────────── */
+.node-appear {
+  animation: node-appear-in 200ms ease forwards;
+}
+
+.node-dismiss {
+  animation: node-dismiss-out 150ms ease forwards;
+}
+
+@keyframes node-appear-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes node-dismiss-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* ─── Running pulse animation ─────────────────────────────────────────────── */
+@keyframes status-pulse {
+  0%, 100% { opacity: 1.0; }
+  50% { opacity: 0.6; }
+}
+
+.status-running {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Command palette animations ──────────────────────────────────────────── */
+@keyframes cp-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cp-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ─── Delta mode — applied via inline style transition ────────────────────── */
+/* (opacity: 0.3 on dimmed nodes, transition: 200ms ease in blockNode style) */
 
 /* ─── Reset ───────────────────────────────────────────────────────────────── */
 *, *::before, *::after {

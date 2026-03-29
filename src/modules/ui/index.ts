@@ -8,3 +8,5 @@ export { MergeConflictView } from './MergeConflictView.js';
 export { Drawer } from './Drawer.js';
 export { DrawerTaskRow } from './DrawerTaskRow.js';
 export { DrawerTaskDetail } from './DrawerTaskDetail.js';
+export { CommandPalette } from './CommandPalette.js';
+export { useKeyboardShortcuts } from './useKeyboardShortcuts.js';

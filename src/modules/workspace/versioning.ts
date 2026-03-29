@@ -17,6 +17,7 @@ import { invoke } from '../../lib/ipc.js';
 import { useDesignStore } from '../store/store.js';
 import { flush } from './flush.js';
 import { getWorkspacePath } from './flush.js';
+import { writeAgentGuide } from './agent-guide.js';
 
 // ─── Rust IPC types ──────────────────────────────────────────────────────────
 
@@ -73,6 +74,18 @@ export async function cutVersion(): Promise<void> {
 
   // 6. Flush the updated state (version string + clean statuses) to disk
   await flush();
+
+  // 7. Regenerate AGENT_GUIDE.md with the current design state
+  const freshState = useDesignStore.getState();
+  const syntheticConfig = {
+    name: 'Architect Project',
+    root_canvas_id: freshState.ui.current_path[0] ?? 'root',
+    version: newVersion,
+    created_at: new Date().toISOString(),
+  };
+  writeAgentGuide(syntheticConfig, freshState.canvases).catch((err: unknown) => {
+    console.warn('[versioning] writeAgentGuide failed (non-fatal):', err);
+  });
 
   console.info(`[versioning] Cut v${newVersion} — archive: ${archivePath}, hash: ${treeHash}`);
 }

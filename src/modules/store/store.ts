@@ -112,6 +112,10 @@ export interface DesignStoreActions {
   setImplPhase: (phase: ImplPhase) => void;
   setCompletionReport: (report: string | null) => void;
   appendFixTasks: (tasks: ImplTask[]) => void;
+
+  // Phase 11: command palette
+  toggleCommandPalette: () => void;
+  setCommandPaletteOpen: (open: boolean) => void;
 }
 
 export type DesignStore = DesignStoreState & DesignStoreActions;
@@ -139,6 +143,8 @@ const INITIAL_STATE: DesignStoreState = {
     // Phase 8
     impl_phase: 'idle',
     completion_report: null,
+    // Phase 11
+    command_palette_open: false,
   },
   // Phase 4
   agent_changesets: [],
@@ -466,6 +472,18 @@ export const useDesignStore = create<DesignStore>()(
     appendFixTasks: (tasks) =>
       set((state) => {
         state.impl_tasks = [...state.impl_tasks, ...tasks];
+      }),
+
+    // ── Phase 11: Command palette ─────────────────────────────────────────
+
+    toggleCommandPalette: () =>
+      set((state) => {
+        state.ui.command_palette_open = !state.ui.command_palette_open;
+      }),
+
+    setCommandPaletteOpen: (open) =>
+      set((state) => {
+        state.ui.command_palette_open = open;
       }),
   }))
 );

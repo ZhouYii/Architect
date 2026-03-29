@@ -140,3 +140,31 @@
 .node-proposed .node-frame {
   border-style: dashed !important;
 }
+
+/* ─── Status ring transitions (200ms color fade) ──────────────────────────── */
+.node-frame {
+  transition:
+    border-color var(--transition-status),
+    box-shadow var(--transition-status);
+}
+
+/* ─── Delta mode node opacity transition ──────────────────────────────────── */
+.react-flow__node {
+  transition: opacity var(--transition-delta);
+}
+
+/* ─── Running pulse (verify existing, 2s) ────────────────────────────────── */
+@keyframes pulseAmberRing {
+  0%, 100% {
+    border-color: var(--color-status-amber);
+    box-shadow: 0 0 0 0 rgba(229, 163, 75, 0);
+  }
+  50% {
+    border-color: var(--color-status-amber);
+    box-shadow: 0 0 0 4px rgba(229, 163, 75, 0.2);
+  }
+}
+
+.node-running .node-frame {
+  animation: pulseAmberRing 2s ease-in-out infinite;
+}

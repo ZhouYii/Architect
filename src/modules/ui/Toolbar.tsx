@@ -1,12 +1,10 @@
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useDesignStore } from '../store/store.js';
 import { TOKENS } from '../../styles/theme.js';
 import type { BreadcrumbSegment } from '../store/selectors.js';
 import { scan } from '../scanner/index.js';
 import { VersionIndicator } from './VersionIndicator.js';
 import { TrackSwitcher } from './TrackSwitcher.js';
-import { cutVersion } from '../workspace/versioning.js';
-import { createTrack, switchTrack } from '../workspace/tracks.js';
 import { planImplementation } from '../orchestrator/planner.js';
 
 export function Toolbar() {
@@ -17,121 +15,15 @@ export function Toolbar() {
   const viewMode = useDesignStore((s) => s.ui.view_mode);
   const setViewMode = useDesignStore((s) => s.setViewMode);
   const setCodeGraph = useDesignStore((s) => s.setCodeGraph);
-  const toggleDeltaMode = useDesignStore((s) => s.toggleDeltaMode);
-  const activeTrack = useDesignStore((s) => s.active_track);
-  const tracks = useDesignStore((s) => s.tracks);
   const setImplTasks = useDesignStore((s) => s.setImplTasks);
   const setImplPlanId = useDesignStore((s) => s.setImplPlanId);
   const setDrawerOpen = useDesignStore((s) => s.setDrawerOpen);
-  const toggleDrawer = useDesignStore((s) => s.toggleDrawer);
   const lastMajorVersion = useDesignStore((s) => s.ui.last_major_version);
 
   const [isScanning, setIsScanning] = useState(false);
   const [isPlanning, setIsPlanning] = useState(false);
 
-  // ── Keyboard shortcuts ─────────────────────────────────────────────────────
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement;
-      // Ignore shortcuts when typing in inputs/textareas
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) {
-        return;
-      }
-
-      // D — toggle delta mode
-      if (e.key === 'd' || e.key === 'D') {
-        e.preventDefault();
-        toggleDeltaMode();
-        return;
-      }
-
-      // 2 — toggle implementation drawer
-      if (e.key === '2') {
-        e.preventDefault();
-        toggleDrawer();
-        return;
-      }
-
-      // Ctrl+. — cut version
-      if (e.ctrlKey && e.key === '.') {
-        e.preventDefault();
-        cutVersion().catch((err: unknown) => {
-          console.error('[toolbar] cutVersion failed:', err);
-        });
-        return;
-      }
-
-      // Ctrl+B — new track
-      if (e.ctrlKey && (e.key === 'b' || e.key === 'B')) {
-        e.preventDefault();
-        const name = window.prompt('Track name:', `track-${Date.now()}`);
-        if (!name?.trim()) return;
-        const desc = window.prompt('Description (optional):', '') ?? '';
-        createTrack(name.trim(), desc.trim() || undefined).catch((err: unknown) => {
-          console.error('[toolbar] createTrack failed:', err);
-        });
-        return;
-      }
-
-      // Ctrl+[ — switch to previous track (or main)
-      if (e.ctrlKey && e.key === '[') {
-        e.preventDefault();
-        if (activeTrack !== null) {
-          // Go to main
-          switchTrack(null).catch((err: unknown) => {
-            console.error('[toolbar] switchTrack(null) failed:', err);
-          });
-        } else if (tracks.length > 0) {
-          // Go to first track
-          switchTrack(tracks[0].name).catch((err: unknown) => {
-            console.error('[toolbar] switchTrack failed:', err);
-          });
-        }
-        return;
-      }
-
-      // Ctrl+] — switch to next track
-      if (e.ctrlKey && e.key === ']') {
-        e.preventDefault();
-        if (activeTrack === null && tracks.length > 0) {
-          switchTrack(tracks[0].name).catch((err: unknown) => {
-            console.error('[toolbar] switchTrack failed:', err);
-          });
-        } else if (activeTrack !== null && tracks.length > 0) {
-          const idx = tracks.findIndex((t) => t.name === activeTrack);
-          const nextIdx = (idx + 1) % tracks.length;
-          switchTrack(tracks[nextIdx].name).catch((err: unknown) => {
-            console.error('[toolbar] switchTrack failed:', err);
-          });
-        }
-        return;
-      }
-
-      // Ctrl+M — merge active track to main
-      if (e.ctrlKey && (e.key === 'm' || e.key === 'M')) {
-        if (!activeTrack) return;
-        e.preventDefault();
-        if (!window.confirm(`Merge track "${activeTrack}" into main?`)) return;
-        import('../workspace/tracks.js')
-          .then(({ mergeTrack }) =>
-            mergeTrack(activeTrack).catch((err: unknown) => {
-              console.error('[toolbar] mergeTrack failed:', err);
-            })
-          )
-          .catch((err: unknown) => {
-            console.error('[toolbar] import tracks failed:', err);
-          });
-        return;
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [toggleDeltaMode, activeTrack, tracks, toggleDrawer]);
+  // NOTE: Global keyboard shortcuts are now handled by useKeyboardShortcuts() in App.tsx.
 
   const handleViewToggle = useCallback(
     async (mode: 'conceptual' | 'code') => {
