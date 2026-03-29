@@ -1,0 +1,27 @@
+id: id_1774767026344_6
+description: >
+  Silent skip of invalid YAML blocks means the user has no idea why a response
+  produced 0 suggestions. The ExtractionResult interface already has
+  skippedBlocks -- surface it.
+status: accepted
+timestamp: 2026-03-29T06:50:26.344Z
+changes:
+  - kind: modify_block
+    target_canvas: ai-codesign
+    target_id: proposal-extraction
+    reason: >
+      Silent skip of invalid YAML blocks means the user has no idea why a
+      response produced 0 suggestions. The ExtractionResult interface already
+      has skippedBlocks -- surface it.
+    proposal:
+      id: proposal-extraction
+      label: Proposal Extraction
+      type: module
+      status: approved
+      annotation: >
+        Parses the AI's free-text response to find YAML fenced code blocks that
+        match the ACP schema. Converts valid blocks into structured ACP objects
+        and pushes them into the pending queue. Invalid YAML blocks are counted
+        and reported to the UI as a "N blocks couldn't be parsed" notice so the
+        user knows to retry or rephrase. Parse errors include the raw YAML and
+        the specific validation failure for debugging.

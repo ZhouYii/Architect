@@ -1,0 +1,18 @@
+id: id_1774767026345_9
+description: |
+  Context assembly needs conversation history to build multi-turn prompts.
+status: accepted
+timestamp: 2026-03-29T06:50:26.345Z
+changes:
+  - kind: add_arrow
+    target_canvas: ai-codesign
+    reason: |
+      Context assembly needs conversation history to build multi-turn prompts.
+    proposal:
+      id: history-feeds-context
+      from: conversation-history
+      to: context-assembly
+      label: provides prior messages for multi-turn context
+      type: reads
+      order: 0
+      weight: normal

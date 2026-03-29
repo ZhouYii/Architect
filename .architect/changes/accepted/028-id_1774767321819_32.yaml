@@ -1,0 +1,19 @@
+id: id_1774767321819_32
+description: >
+  Version comparison goes through the diff engine before reaching review. Make
+  this data path explicit.
+status: accepted
+timestamp: 2026-03-29T06:55:21.819Z
+changes:
+  - kind: modify_arrow
+    target_canvas: root
+    target_id: history-compares
+    reason: >
+      Version comparison goes through the diff engine before reaching review.
+      Make this data path explicit.
+    proposal:
+      from: version-history
+      to: diff-engine
+      label: compares versions
+      type: calls
+      weight: normal

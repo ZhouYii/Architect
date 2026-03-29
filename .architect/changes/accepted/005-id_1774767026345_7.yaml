@@ -1,0 +1,26 @@
+id: id_1774767026345_7
+description: >
+  Streaming requests can take 30+ seconds with local models. Users need an abort
+  button, which requires a cancel signal flowing from UI to provider. The
+  provider must kill the spawned subprocess on cancel.
+status: accepted
+timestamp: 2026-03-29T06:50:26.345Z
+changes:
+  - kind: add_arrow
+    target_canvas: ai-codesign
+    reason: >
+      Streaming requests can take 30+ seconds with local models. Users need an
+      abort button, which requires a cancel signal flowing from UI to provider.
+      The provider must kill the spawned subprocess on cancel.
+    proposal:
+      id: ui-cancels-provider
+      from: conversation-ui
+      to: provider-abstraction
+      label: cancels active stream (kills subprocess)
+      type: calls
+      order: 6
+      weight: normal
+      annotation: >
+        An AbortController-style signal passed alongside the streaming callback.
+        When triggered, the provider kills the CLI subprocess via Tauri shell's
+        kill() method and resolves the promise with the partial response.

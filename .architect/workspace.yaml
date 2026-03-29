@@ -1,0 +1,9 @@
+schema_version: 1
+project_name: Architect
+created_at: 2026-03-28
+last_checkpoint: cp-003
+last_checkpoint_at: 2026-03-29T06:59:24.391Z
+last_checkpoint_hash: sha256:8a37a2c5d67d29c75506734bb6e4dd2fc9782cd87d531c0b11a3c5019c8493be
+llm:
+  preferred_provider: claude-code
+  ollama_model: llama3

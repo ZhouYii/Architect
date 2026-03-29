@@ -1,0 +1,28 @@
+id: id_1774767026345_8
+description: >
+  The provider interface takes a single prompt, but effective co-design requires
+  multi-turn context. Prior user requests, AI responses, and accepted/rejected
+  proposals should inform the next prompt. Currently this context is lost
+  between calls -- the AI re-discovers the design from scratch every time.
+status: accepted
+timestamp: 2026-03-29T06:50:26.345Z
+changes:
+  - kind: add_block
+    target_canvas: ai-codesign
+    reason: >
+      The provider interface takes a single prompt, but effective co-design
+      requires multi-turn context. Prior user requests, AI responses, and
+      accepted/rejected proposals should inform the next prompt. Currently this
+      context is lost between calls -- the AI re-discovers the design from
+      scratch every time.
+    proposal:
+      id: conversation-history
+      label: Conversation History
+      type: data-store
+      status: draft
+      annotation: >
+        Maintains an ordered list of messages (user, assistant, system) plus
+        metadata about which proposals were accepted/rejected. The context
+        assembly layer reads this to build multi-turn prompts. Persisted to
+        workspace.state.yaml so history survives app restarts. Implements a
+        sliding window or summarization strategy to stay within token limits.

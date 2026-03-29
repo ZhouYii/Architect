@@ -1,0 +1,22 @@
+id: id_1774767321817_25
+description: >
+  When the app starts or the user opens a workspace, the design is loaded from
+  project storage into the canvas. This is the reverse of canvas-persists and
+  it's the first thing that happens in every session. Currently invisible.
+status: accepted
+timestamp: 2026-03-29T06:55:21.817Z
+changes:
+  - kind: add_arrow
+    target_canvas: root
+    reason: >
+      When the app starts or the user opens a workspace, the design is loaded
+      from project storage into the canvas. This is the reverse of
+      canvas-persists and it's the first thing that happens in every session.
+      Currently invisible.
+    proposal:
+      id: storage-loads
+      from: project-storage
+      to: visual-canvas
+      label: loads design on open
+      type: reads
+      weight: bold

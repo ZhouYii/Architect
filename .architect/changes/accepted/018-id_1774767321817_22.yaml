@@ -1,0 +1,29 @@
+id: id_1774767321817_22
+description: >
+  The autosave engine (flush.ts) is not a simple write — it's a 5-second
+  debounced flush that serializes YAML, calls compare-before-write in Rust, and
+  manages workspace.state.yaml separately. It's the system's durability
+  guarantee and affects perceived performance (<100ms even for large
+  workspaces).
+status: accepted
+timestamp: 2026-03-29T06:55:21.817Z
+changes:
+  - kind: add_block
+    target_canvas: root
+    reason: >
+      The autosave engine (flush.ts) is not a simple write — it's a 5-second
+      debounced flush that serializes YAML, calls compare-before-write in Rust,
+      and manages workspace.state.yaml separately. It's the system's durability
+      guarantee and affects perceived performance (<100ms even for large
+      workspaces).
+    proposal:
+      id: autosave
+      label: Autosave Engine
+      type: module
+      status: approved
+      annotation: >
+        Debounced (5s) persistence engine that serializes the current design
+        state to YAML and writes to disk via Rust. Compares content before
+        writing to skip unchanged files, keeping flush time under 100ms. Also
+        maintains ephemeral workspace state (viewport, selected block)
+        separately from design data.

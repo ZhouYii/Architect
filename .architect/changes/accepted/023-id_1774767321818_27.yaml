@@ -1,0 +1,42 @@
+id: id_1774767321818_27
+description: >
+  The AI Co-Design block conflates four distinct responsibilities that are
+  separate in the codebase: ChatPanel.tsx (conversational UI with streaming),
+  acp.ts (parsing ACP proposals from LLM responses), prompts.ts (system prompt
+  construction), and the provider layer (already proposed as a separate block).
+  Decomposing makes the ACP parsing visible — it's the critical bridge between
+  free-form AI output and structured change proposals.
+status: accepted
+timestamp: 2026-03-29T06:55:21.818Z
+changes:
+  - kind: decompose
+    target_canvas: root
+    target_id: ai-codesign
+    reason: >
+      The AI Co-Design block conflates four distinct responsibilities that are
+      separate in the codebase: ChatPanel.tsx (conversational UI with
+      streaming), acp.ts (parsing ACP proposals from LLM responses), prompts.ts
+      (system prompt construction), and the provider layer (already proposed as
+      a separate block). Decomposing makes the ACP parsing visible — it's the
+      critical bridge between free-form AI output and structured change
+      proposals.
+    proposal:
+      children:
+        - id: chat-ui
+          label: Chat Interface
+          type: module
+          annotation: Conversational UI with streaming display (ChatPanel.tsx)
+        - id: acp-parser
+          label: ACP Parser
+          type: module
+          annotation: >
+            Extracts structured Architecture Change Proposals from LLM output.
+            Recognizes 10 ACP kinds (add_block, remove_block, modify_block,
+            add_arrow, remove_arrow, modify_arrow, add_component, decompose,
+            refine_arrow, restructure).
+        - id: prompt-engine
+          label: Prompt Engine
+          type: module
+          annotation: >
+            Constructs system prompts that include the current design context
+            and AGENT_GUIDE.md so the LLM's suggestions are grounded in reality.

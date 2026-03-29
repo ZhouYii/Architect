@@ -1,0 +1,40 @@
+id: id_1774767321818_28
+description: >
+  The canvas block hides the hierarchical drill-down model (double-click to
+  enter sub-canvas, breadcrumb to navigate back) which is a core architectural
+  feature. It also hides the tree navigator sidebar (TreeNavigator.tsx) and port
+  boundary nodes (PortNode.tsx) which enable cross-depth connections. These
+  aren't implementation details — they define the data model.
+status: accepted
+timestamp: 2026-03-29T06:55:21.818Z
+changes:
+  - kind: decompose
+    target_canvas: root
+    target_id: visual-canvas
+    reason: >
+      The canvas block hides the hierarchical drill-down model (double-click to
+      enter sub-canvas, breadcrumb to navigate back) which is a core
+      architectural feature. It also hides the tree navigator sidebar
+      (TreeNavigator.tsx) and port boundary nodes (PortNode.tsx) which enable
+      cross-depth connections. These aren't implementation details — they define
+      the data model.
+    proposal:
+      children:
+        - id: canvas-engine
+          label: Canvas Engine
+          type: module
+          annotation: >
+            React Flow wrapper that maps Zustand store state to nodes/edges.
+            Handles drag, connect, selection, and syncs back to store on commit.
+        - id: hierarchy-nav
+          label: Hierarchy Navigation
+          type: module
+          annotation: >
+            Breadcrumb + TreeNavigator + PortNode. Enables the recursive canvas
+            model where any block can contain a sub-canvas.
+        - id: block-rendering
+          label: Block & Edge Rendering
+          type: module
+          annotation: >
+            Custom node (BlockNode.tsx) and edge (ArrowEdge.tsx) renderers with
+            type icons, status dots, and contract badges.

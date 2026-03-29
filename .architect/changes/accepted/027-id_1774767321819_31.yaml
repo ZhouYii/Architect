@@ -1,0 +1,26 @@
+id: id_1774767321819_31
+description: >
+  The custom diff engine (diff.ts, ~80 lines) exists because generic diff
+  libraries produce noisy results on the Block/Arrow data model. It compares by
+  entity ID and reports field-level changes. This is an explicit architectural
+  decision (documented in CLAUDE.md) that should be visible.
+status: accepted
+timestamp: 2026-03-29T06:55:21.819Z
+changes:
+  - kind: add_block
+    target_canvas: root
+    reason: >
+      The custom diff engine (diff.ts, ~80 lines) exists because generic diff
+      libraries produce noisy results on the Block/Arrow data model. It compares
+      by entity ID and reports field-level changes. This is an explicit
+      architectural decision (documented in CLAUDE.md) that should be visible.
+    proposal:
+      id: diff-engine
+      label: Diff Engine
+      type: module
+      status: approved
+      annotation: >
+        Custom structural diff that compares Block/Arrow entities by ID and
+        reports field-level changes. Built instead of using generic JSON diff
+        libraries because the domain-specific model produces much cleaner
+        results. ~80 lines, feeds directly into the review system.

@@ -1,0 +1,159 @@
+id: project-storage
+label: Project Storage
+parent: root
+components:
+  - id: autosave-engine
+    label: Autosave Engine
+    has_children: false
+    ports: []
+    type: module
+    status: approved
+    annotation: >
+      Debounced persistence that writes the in-memory design to disk after 5
+      seconds of inactivity. Uses a hash comparison to skip writes when nothing
+      has changed. On each successful flush, it increments the minor version
+      number and recomputes the structural hash. The debounce strategy is a
+      trade-off between data safety (shorter = fewer lost edits on crash) and
+      disk I/O (shorter = more writes). Five seconds was chosen as a reasonable
+      balance for interactive design work.
+  - id: serialization-layer
+    label: Serialization Layer
+    has_children: true
+    ports: []
+    type: module
+    status: approved
+    annotation: >
+      Bidirectional conversion between in-memory TypeScript objects and on-disk
+      file formats. Handles four file types: node.yaml (YAML for blocks, arrows,
+      ports with snake_case field names), node.layout.json (JSON for block
+      positions), node.interfaces.ts (raw TypeScript content), and node.notes.md
+      (raw Markdown content). Includes backward-compatible deserialization that
+      normalizes legacy field names (e.g. 'in'->'entry',
+      'version'->'last_checkpoint'). Also generates Mermaid diagram files at
+      checkpoint time. The boundary exists because serialization is surprisingly
+      complex -- field renaming, optional field omission, contract nesting, port
+      normalization -- and centralizing it prevents format drift.
+  - id: native-filesystem
+    label: Native Filesystem Bridge
+    has_children: false
+    ports: []
+    type: module
+    status: approved
+    annotation: >
+      Rust commands exposed to the frontend via Tauri's IPC bridge. Handles all
+      disk operations: recursive directory reading (read_workspace),
+      compare-before-write (write_files), deterministic structural hashing
+      (compute_tree_hash -- only hashes node.yaml and node.interfaces.ts,
+      ignoring notes, layout, and diagrams per PRD section 8.2), tar.gz archive
+      creation and extraction, and change detection. This native layer exists
+      because browser-sandboxed JavaScript cannot access the filesystem
+      directly. The Rust implementation provides atomicity guarantees and
+      performance that would be impossible in pure JS.
+  - id: tree-structure
+    label: Tree File Organization
+    has_children: false
+    ports: []
+    type: module
+    status: approved
+    annotation: >
+      The convention that maps the in-memory canvas hierarchy to a directory
+      tree on disk. Root canvas files live at .architect/tree/, and each child
+      canvas gets a subdirectory named by its ID. A canvas at root ->
+      game-server -> gacha-service maps to
+      .architect/tree/game-server/gacha-service/node.yaml. This convention makes
+      the architecture browsable with standard file tools and version-control
+      friendly -- each level of the hierarchy is an independent set of files
+      that can be diffed, merged, and blamed independently. The trade-off is
+      that renaming a block's ID requires renaming a directory, which is a
+      heavier operation than changing a field value.
+  - id: workspace-metadata
+    label: Workspace Metadata
+    has_children: false
+    ports: []
+    type: module
+    status: approved
+    annotation: >
+      Two configuration files at the .architect/ root: workspace.yaml (project
+      name, schema version, last checkpoint ID, last checkpoint hash, LLM
+      preferences) and workspace.state.yaml (current version string, head hash,
+      dirty flag, pending change count, last flush time, agent sessions).
+      Metadata is updated on every flush and checkpoint. This separation between
+      config (changes rarely, user-facing) and state (changes often,
+      machine-managed) avoids unnecessary merge conflicts when multiple agents
+      or users work on the same project.
+connections:
+  - id: autosave-serializes
+    from: autosave-engine
+    to: serialization-layer
+    label: converts in-memory state to file contents
+    type: calls
+    order: 1
+    weight: normal
+    annotation: >
+      The flush function calls serializeTreeToFiles() which walks all canvas
+      nodes and produces an array of {path, content} pairs. Each canvas
+      generates node.yaml, node.layout.json, and optionally node.interfaces.ts
+      and node.notes.md.
+  - id: serialization-writes-fs
+    from: serialization-layer
+    to: native-filesystem
+    label: sends file contents for disk write
+    type: calls
+    order: 2
+    weight: normal
+    annotation: >
+      Serialized file arrays are passed to the Rust write_files command via
+      Tauri IPC. The Rust side compares each file's current content before
+      writing, skipping unchanged files to minimize I/O.
+  - id: fs-hashes-tree
+    from: native-filesystem
+    to: workspace-metadata
+    label: provides structural content hash
+    type: writes
+    order: 3
+    weight: normal
+    annotation: >
+      After writing files, compute_tree_hash scans only node.yaml and
+      node.interfaces.ts files, producing a deterministic SHA-256 hash. This
+      hash is stored in both workspace.yaml and workspace.state.yaml to detect
+      drift between checkpoints.
+  - id: tree-org-guides-serialization
+    from: tree-structure
+    to: serialization-layer
+    label: determines output file paths
+    type: reads
+    order: 4
+    weight: normal
+    annotation: >
+      The serialization layer uses buildCanvasPath() to translate canvas
+      hierarchy (parent chain) into directory paths. The tree structure
+      convention is the contract between serialization and the filesystem.
+  - id: autosave-updates-metadata
+    from: autosave-engine
+    to: workspace-metadata
+    label: updates version and hash on each flush
+    type: writes
+    order: 5
+    weight: normal
+    annotation: >
+      Every successful flush increments the minor version and writes an updated
+      workspace.state.yaml with the new hash, version, and timestamp. This
+      ensures the metadata always reflects the latest persisted state.
+ports:
+  - id: ps-persist-entry
+    label: design state to save
+    direction: entry
+    parent_arrow: canvas-persists
+    bound_to: autosave-engine
+    annotation: >
+      The autosave engine receives dirty-flag signals from the canvas's state
+      synchronization layer and triggers debounced writes to disk.
+  - id: ps-archive-entry
+    label: checkpoint archive requests
+    direction: entry
+    parent_arrow: history-snapshots
+    bound_to: native-filesystem
+    annotation: >
+      Checkpoint creation writes tar.gz archives through the Tauri native
+      filesystem layer, which handles directory creation, compression, and
+      atomic writes.

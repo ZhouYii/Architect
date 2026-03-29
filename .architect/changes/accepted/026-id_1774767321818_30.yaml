@@ -1,0 +1,34 @@
+id: id_1774767321818_30
+description: >
+  The interfaces underspecify the ACP system. The real system has 10 distinct
+  ACP kinds (add_block, remove_block, modify_block, add_arrow, remove_arrow,
+  modify_arrow, add_component, decompose, refine_arrow, restructure) and
+  per-modification accept/reject (not per-proposal). The Modification type uses
+  targetLabel (string matching) instead of targetId (deterministic).
+  ReviewDecision should support partial acceptance.
+status: accepted
+timestamp: 2026-03-29T06:55:21.818Z
+changes:
+  - kind: modify_block
+    target_canvas: root
+    target_id: change-review
+    reason: >
+      The interfaces underspecify the ACP system. The real system has 10
+      distinct ACP kinds (add_block, remove_block, modify_block, add_arrow,
+      remove_arrow, modify_arrow, add_component, decompose, refine_arrow,
+      restructure) and per-modification accept/reject (not per-proposal). The
+      Modification type uses targetLabel (string matching) instead of targetId
+      (deterministic). ReviewDecision should support partial acceptance.
+    proposal:
+      annotation: >
+        Review gateway that supports 10 ACP operation kinds with
+        per-modification accept/reject granularity. Targets use entity IDs (not
+        labels) for deterministic application. Supports both AI-proposed and
+        version-diff sourced change sets.
+      interface_notes:
+        - Modification.action should enumerate all 10 ACP kinds, not just 4
+        - Modification should use targetId (not targetLabel) for deterministic
+          matching
+        - ReviewDecision needs a modifications subset field for partial
+          acceptance
+        - Add ContractSet interface (invariants, preconditions, postconditions)

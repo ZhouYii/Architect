@@ -1,0 +1,23 @@
+id: ai-codesign
+label: AI Co-Design
+parent: root
+components:
+  - id: chat-ui
+    label: Chat Interface
+    has_children: false
+    ports: []
+    type: module
+    status: draft
+  - id: acp-parser
+    label: ACP Parser
+    has_children: false
+    ports: []
+    type: module
+    status: draft
+  - id: prompt-engine
+    label: Prompt Engine
+    has_children: false
+    ports: []
+    type: module
+    status: draft
+connections: []

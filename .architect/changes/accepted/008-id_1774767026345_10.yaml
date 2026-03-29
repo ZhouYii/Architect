@@ -1,0 +1,41 @@
+id: id_1774767026345_10
+description: >
+  This block bundles three concerns: (1) a registry that maps provider IDs to
+  implementations, (2) a detection layer that checks which CLIs exist, and (3)
+  individual CLI adapters with different stdout parsing. Decomposing lets
+  adapters be added without touching registry code, and makes it clear where
+  provider-specific quirks live.
+status: accepted
+timestamp: 2026-03-29T06:50:26.345Z
+changes:
+  - kind: decompose
+    target_canvas: ai-codesign
+    target_id: provider-abstraction
+    reason: >
+      This block bundles three concerns: (1) a registry that maps provider IDs
+      to implementations, (2) a detection layer that checks which CLIs exist,
+      and (3) individual CLI adapters with different stdout parsing. Decomposing
+      lets adapters be added without touching registry code, and makes it clear
+      where provider-specific quirks live.
+    proposal:
+      children:
+        - id: provider-registry
+          label: Provider Registry
+          type: module
+          status: approved
+          annotation: >
+            Maps provider IDs to adapter instances. Exposes getProvider(id) and
+            listAvailable(). Runs availability checks on app startup and caches
+            the results.
+        - id: cli-adapter-claude
+          label: Claude CLI Adapter
+          type: module
+          status: approved
+        - id: cli-adapter-opencode
+          label: OpenCode CLI Adapter
+          type: module
+          status: draft
+        - id: cli-adapter-ollama
+          label: Ollama CLI Adapter
+          type: module
+          status: approved

@@ -1,0 +1,385 @@
+id: state-sync
+label: State Synchronization
+parent: visual-canvas
+components:
+  - id: zustand-core
+    label: Zustand Store Definition
+    has_children: false
+    ports: []
+    type: class
+    status: approved
+    annotation: >
+      The create() call that defines the DesignStore interface and initial
+      state. Uses two middleware layers: subscribeWithSelector (for fine-grained
+      subscriptions) wrapping immer (for immutable updates via mutable syntax).
+      Initial state includes demo data from createDemoData(). Exports the
+      useDesignStore hook and genId() utility.
+    contract:
+      invariants:
+        - id: zc-inv-1
+          description: >
+            The store is a singleton. useDesignStore is created once at module
+            load and shared across all components.
+          status: implemented
+        - id: zc-inv-2
+          description: >
+            genId() produces unique IDs using Date.now() + incrementing counter.
+            Format: "id_{timestamp}_{counter}".
+          status: implemented
+    source_map:
+      files:
+        - src/store.ts
+      entry_point: src/store.ts
+  - id: immer-middleware
+    label: Immer Middleware
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: >
+      The zustand/middleware/immer wrapper that enables draft-based mutations.
+      All set() callbacks receive a mutable draft proxy. This is critical
+      because CanvasNode contains nested arrays (components, connections, ports)
+      that would be painful to update immutably. Immer produces structural
+      sharing automatically, meaning unchanged subtrees keep the same reference
+      for React.memo optimization.
+    contract:
+      invariants:
+        - id: im-inv-1
+          description: >
+            Every set() callback receives an Immer draft. Direct mutation
+            (s.dirty = true) is valid and produces an immutable update.
+          status: implemented
+    source_map:
+      files:
+        - src/store.ts
+      entry_point: src/store.ts
+  - id: selector-middleware
+    label: Subscribe-with-Selector Middleware
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: >
+      The subscribeWithSelector middleware enables fine-grained subscriptions.
+      Used by wireAutosave() to subscribe specifically to the dirty flag rather
+      than the entire store. This prevents the autosave timer from being reset
+      on every unrelated state change (e.g., chat messages).
+    contract:
+      invariants:
+        - id: sm-inv-1
+          description: >
+            subscribeWithSelector wraps immer, not vice versa. Order matters:
+            subscribeWithSelector(immer(fn)).
+          status: implemented
+    source_map:
+      files:
+        - src/store.ts
+      entry_point: src/store.ts
+  - id: canvas-tree-store
+    label: Canvas Tree State
+    has_children: false
+    ports: []
+    type: data-store
+    status: approved
+    annotation: >
+      The nodes: Record<ID, CanvasNode> field that stores the complete canvas
+      hierarchy. Each CanvasNode contains components (Block[]), connections
+      (Arrow[]), layout (CanvasLayout), and a parentId for hierarchy traversal.
+      Also stores currentPath (active canvas ID) and breadcrumb (computed path
+      from root to current).
+    contract:
+      invariants:
+        - id: ct-inv-1
+          description: >
+            nodes always contains a 'root' key. The root canvas has
+            parentId=null.
+          status: implemented
+        - id: ct-inv-2
+          description: >
+            currentPath always references a valid key in nodes. navigateTo
+            validates node existence before switching.
+          status: implemented
+        - id: ct-inv-3
+          description: >
+            breadcrumb is recomputed on every navigateTo by walking parentId
+            chain from current node to root.
+          status: implemented
+    source_map:
+      files:
+        - src/store.ts
+      entry_point: src/store.ts
+  - id: block-actions
+    label: Block Mutation Actions
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: >
+      Store actions for block CRUD: addBlock (push to components[], set default
+      layout position {200,200}), updateBlock (Object.assign partial updates),
+      removeBlock (filter components + connections + delete layout + delete
+      child canvas), updateBlockPosition (set layout[blockId]). All set
+      dirty=true.
+    contract:
+      invariants:
+        - id: ba-inv-1
+          description: >
+            addBlock always assigns a default position {x:200, y:200} in the
+            canvas layout.
+          status: implemented
+        - id: ba-inv-2
+          description: >
+            removeBlock cascades: removes the block from components, removes all
+            connections referencing it (from or to), removes its layout entry,
+            and deletes its child canvas if it exists.
+          status: implemented
+      preconditions:
+        - id: ba-pre-1
+          description: >
+            All block actions operate on nodes[currentPath]. If the canvas
+            doesn't exist, the action silently returns (no-op).
+          status: implemented
+      postconditions:
+        - id: ba-post-1
+          description: >
+            Every mutation sets dirty=true. This triggers the autosave
+            subscription.
+          status: implemented
+    source_map:
+      files:
+        - src/store.ts
+      entry_point: src/store.ts
+  - id: arrow-actions
+    label: Arrow Mutation Actions
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: >
+      Store actions for arrow CRUD: addArrow (push to connections[]),
+      updateArrow (Object.assign partial updates), removeArrow (filter
+      connections + clear selectedArrowId). All set dirty=true.
+    contract:
+      invariants:
+        - id: aa-inv-1
+          description: >
+            addArrow does not validate that from/to reference existing blocks.
+            Invalid references produce edges that React Flow silently drops.
+          status: implemented
+      preconditions:
+        - id: aa-pre-1
+          description: |
+            All arrow actions operate on nodes[currentPath]. Canvas must exist.
+          status: implemented
+      postconditions:
+        - id: aa-post-1
+          description: >
+            removeArrow clears selectedArrowId if the removed arrow was selected.
+          status: implemented
+    source_map:
+      files:
+        - src/store.ts
+      entry_point: src/store.ts
+  - id: navigation-actions
+    label: Navigation Actions
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: >
+      navigateTo(canvasId): validates node exists, sets currentPath, clears both
+      selections, rebuilds breadcrumb by walking parentId chain upward.
+      navigateUp(): goes to parent canvas if breadcrumb length > 1.
+    contract:
+      invariants:
+        - id: na-inv-1
+          description: |
+            navigateTo always clears both selectedBlockId and selectedArrowId.
+          status: implemented
+        - id: na-inv-2
+          description: |
+            navigateUp is a no-op when already at root (breadcrumb.length <= 1).
+          status: implemented
+      preconditions:
+        - id: na-pre-1
+          description: |
+            navigateTo silently returns if canvasId is not in nodes.
+          status: implemented
+      postconditions:
+        - id: na-post-1
+          description: >
+            After navigateTo, breadcrumb contains the full path from root to the
+            target canvas, computed by walking the parentId chain.
+          status: implemented
+    source_map:
+      files:
+        - src/store.ts
+      entry_point: src/store.ts
+  - id: dirty-tracker
+    label: Dirty Tracking & Autosave Wiring
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: >
+      markDirty() sets dirty=true. markClean(hash) sets dirty=false and updates
+      state.head_hash + state.last_flush_at. wireAutosave() is called once at
+      startup and uses subscribeWithSelector to watch the dirty flag. When dirty
+      becomes true, it dynamically imports flush.ts and calls scheduleFlush().
+      The dynamic import avoids circular dependency (flush.ts imports store).
+    contract:
+      invariants:
+        - id: dt-inv-1
+          description: >
+            wireAutosave() is idempotent. The flushWired guard prevents
+            double-subscription.
+          status: implemented
+        - id: dt-inv-2
+          description: >
+            markClean updates state.head_hash, state.dirty, and
+            state.last_flush_at atomically in a single set() call.
+          status: implemented
+      postconditions:
+        - id: dt-post-1
+          description: >
+            When dirty transitions false->true, scheduleFlush() is called within
+            the subscription callback.
+          status: implemented
+    source_map:
+      files:
+        - src/store.ts
+        - src/lib/flush.ts
+      entry_point: src/store.ts
+  - id: diff-merge-state
+    label: Diff & Merge State
+    has_children: false
+    ports: []
+    type: data-store
+    status: approved
+    annotation: >
+      Stores diffEntries (DiffEntry[]) and showMergeReview (boolean) for the
+      merge review overlay. Actions: setDiffEntries, setShowMergeReview,
+      acceptDiffEntry(index), rejectDiffEntry(index). Accept/reject set the
+      entry's accepted field to true/false respectively.
+    contract:
+      invariants:
+        - id: dm-inv-1
+          description: >
+            acceptDiffEntry and rejectDiffEntry operate by array index, not by
+            entry ID. Guard: check entry exists at index before mutating.
+          status: implemented
+    source_map:
+      files:
+        - src/store.ts
+      entry_point: src/store.ts
+  - id: acp-state
+    label: ACP Pending State
+    has_children: false
+    ports: []
+    type: data-store
+    status: approved
+    annotation: >
+      Stores pendingACPs (ACP[]) -- the queue of AI-proposed changes awaiting
+      review. Actions: addPendingACP (push), resolveACP (find by ID, set status
+      to accepted or dismissed). ACPs are never removed from the array, only
+      status-transitioned.
+    contract:
+      invariants:
+        - id: as-inv-1
+          description: >
+            resolveACP finds the ACP by id and sets status. If not found, it's a
+            silent no-op.
+          status: implemented
+        - id: as-inv-2
+          description: >
+            ACP status lifecycle: pending -> accepted | dismissed. No reverse
+            transitions.
+          status: implemented
+    source_map:
+      files:
+        - src/store.ts
+      entry_point: src/store.ts
+connections:
+  - id: zustand-wraps-immer
+    from: zustand-core
+    to: immer-middleware
+    label: create()(subscribeWithSelector(immer(fn)))
+    type: depends
+    order: 1
+    weight: normal
+    annotation: >
+      The store creation chain. Zustand's create() receives the composed
+      middleware. Immer is the inner layer (applied first to each set call),
+      subscribeWithSelector is the outer layer.
+  - id: zustand-wraps-selector
+    from: zustand-core
+    to: selector-middleware
+    label: subscribeWithSelector wraps immer
+    type: depends
+    order: 2
+    weight: normal
+  - id: actions-mutate-tree
+    from: block-actions
+    to: canvas-tree-store
+    label: mutates nodes[currentPath].components
+    type: writes
+    order: 3
+    weight: normal
+  - id: arrow-actions-mutate-tree
+    from: arrow-actions
+    to: canvas-tree-store
+    label: mutates nodes[currentPath].connections
+    type: writes
+    order: 4
+    weight: normal
+  - id: nav-reads-tree
+    from: navigation-actions
+    to: canvas-tree-store
+    label: reads and updates currentPath + breadcrumb
+    type: writes
+    order: 5
+    weight: normal
+  - id: actions-trigger-dirty
+    from: block-actions
+    to: dirty-tracker
+    label: sets dirty=true after every mutation
+    type: writes
+    order: 6
+    weight: normal
+  - id: dirty-triggers-flush
+    from: dirty-tracker
+    to: zustand-core
+    label: wireAutosave() subscribes to dirty flag
+    type: subscribes
+    order: 7
+    weight: normal
+    annotation: >
+      The subscription uses subscribeWithSelector to watch only the dirty field.
+      When it becomes true, scheduleFlush() is called from the dynamically
+      imported flush module.
+ports:
+  - id: ss-persist-exit
+    label: serialized design state
+    direction: exit
+    parent_arrow: vc-persist-exit
+    bound_to: dirty-tracker
+    annotation: >
+      The dirty tracker's subscription triggers the autosave system when dirty
+      becomes true. The entire nodes map is the serializable state.
+  - id: ss-design-exit
+    label: current design snapshot
+    direction: exit
+    parent_arrow: vc-design-exit
+    bound_to: canvas-tree-store
+    annotation: >
+      External systems (AI co-design) read the current canvas tree via
+      useDesignStore.getState().nodes.
+  - id: ss-apply-entry
+    label: approved changes
+    direction: entry
+    parent_arrow: vc-apply-entry
+    bound_to: block-actions
+    annotation: >
+      Approved changes from the review system call store actions (addBlock,
+      updateBlock, addArrow, etc.) to mutate the live canvas tree.

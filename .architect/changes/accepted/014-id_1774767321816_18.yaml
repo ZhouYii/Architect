@@ -1,0 +1,19 @@
+id: id_1774767321816_18
+description: >
+  Contract validation results feed back into the canvas as status badges and
+  dashboard metrics.
+status: accepted
+timestamp: 2026-03-29T06:55:21.816Z
+changes:
+  - kind: add_arrow
+    target_canvas: root
+    reason: >
+      Contract validation results feed back into the canvas as status badges and
+      dashboard metrics.
+    proposal:
+      id: contracts-report
+      from: contracts
+      to: visual-canvas
+      label: reports compliance status
+      type: calls
+      weight: normal

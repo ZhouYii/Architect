@@ -1,0 +1,21 @@
+id: id_1774767321817_20
+description: >
+  The AI doesn't read the canvas directly — it receives a serialized
+  DesignSnapshot. Clarifying the data that flows makes the interface more
+  precise.
+status: accepted
+timestamp: 2026-03-29T06:55:21.817Z
+changes:
+  - kind: modify_arrow
+    target_canvas: root
+    target_id: canvas-feeds-ai
+    reason: >
+      The AI doesn't read the canvas directly — it receives a serialized
+      DesignSnapshot. Clarifying the data that flows makes the interface more
+      precise.
+    proposal:
+      from: visual-canvas
+      to: ai-codesign
+      label: sends DesignSnapshot
+      type: reads
+      weight: bold

@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+*.local
+
+# Rust build
+src-tauri/target/
+
+# Architect workspace ephemeral files
+.architect/workspace.state.yaml
+.architect/checkpoints/*.tar.gz
+.architect/versions/*.tar.gz
+.architect/changes/pending/
+.architect/tree/**/node.layout.json
+.architect/tree/**/node.diagram.mermaid
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,34 @@
+id: id_1774767026346_13
+description: >
+  interfaceDefinitions is a flat string concatenation. For canvases with many
+  blocks, the AI gets an undifferentiated wall of TypeScript. Structure it as a
+  map of block-id → interface-string so the AI can correlate types to blocks.
+  Also add a token budget check -- if the context exceeds the provider's limit,
+  truncate least-relevant interfaces (blocks far from the user's focus) rather
+  than failing silently.
+status: accepted
+timestamp: 2026-03-29T06:50:26.346Z
+changes:
+  - kind: modify_block
+    target_canvas: ai-codesign
+    target_id: context-assembly
+    reason: >
+      interfaceDefinitions is a flat string concatenation. For canvases with
+      many blocks, the AI gets an undifferentiated wall of TypeScript. Structure
+      it as a map of block-id → interface-string so the AI can correlate types
+      to blocks. Also add a token budget check -- if the context exceeds the
+      provider's limit, truncate least-relevant interfaces (blocks far from the
+      user's focus) rather than failing silently.
+    proposal:
+      id: context-assembly
+      label: Context Assembly
+      type: module
+      status: approved
+      annotation: >
+        Transforms the live design into a prompt context string. Serializes the
+        current canvas to YAML, appends TypeScript interfaces keyed by block ID,
+        and prepends a system prompt instructing ACP format. Implements token
+        budget awareness: estimates prompt size and prunes distant interfaces if
+        the context would exceed the active provider's limit. A sync flush to
+        disk happens before every LLM call so the AI sees exactly what is
+        persisted.

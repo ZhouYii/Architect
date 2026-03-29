@@ -1,0 +1,29 @@
+id: provider-abstraction
+label: Provider Abstraction
+parent: ai-codesign
+components:
+  - id: provider-registry
+    label: Provider Registry
+    has_children: false
+    ports: []
+    type: module
+    status: draft
+  - id: cli-adapter-claude
+    label: Claude CLI Adapter
+    has_children: false
+    ports: []
+    type: module
+    status: draft
+  - id: cli-adapter-opencode
+    label: OpenCode CLI Adapter
+    has_children: false
+    ports: []
+    type: module
+    status: draft
+  - id: cli-adapter-ollama
+    label: Ollama CLI Adapter
+    has_children: false
+    ports: []
+    type: module
+    status: draft
+connections: []

@@ -1,0 +1,26 @@
+id: id_1774767026344_5
+description: >
+  Provider failures (CLI not found, subprocess crash, stderr output, timeout)
+  have no path back to the UI. The user sees a hung spinner with no explanation.
+  An error channel is needed.
+status: accepted
+timestamp: 2026-03-29T06:50:26.344Z
+changes:
+  - kind: add_arrow
+    target_canvas: ai-codesign
+    reason: >
+      Provider failures (CLI not found, subprocess crash, stderr output,
+      timeout) have no path back to the UI. The user sees a hung spinner with no
+      explanation. An error channel is needed.
+    proposal:
+      id: provider-error-to-ui
+      from: provider-abstraction
+      to: conversation-ui
+      label: reports provider errors (not found, crash, timeout)
+      type: publishes
+      order: 5
+      weight: normal
+      annotation: >
+        Stderr output, non-zero exit codes, and spawn failures are surfaced as
+        structured error events. The UI renders these inline in the chat thread
+        as distinct from AI-generated content.

@@ -1,0 +1,26 @@
+id: id_1774767321816_16
+description: >
+  The contract system (contracts.ts, ContractDashboard.tsx, contract badges) is
+  a first-class validation layer that enforces design integrity. It's not
+  represented anywhere on the canvas despite being visible in the UI (badge on
+  every block, dedicated dashboard tab).
+status: accepted
+timestamp: 2026-03-29T06:55:21.816Z
+changes:
+  - kind: add_block
+    target_canvas: root
+    reason: >
+      The contract system (contracts.ts, ContractDashboard.tsx, contract badges)
+      is a first-class validation layer that enforces design integrity. It's not
+      represented anywhere on the canvas despite being visible in the UI (badge
+      on every block, dedicated dashboard tab).
+    proposal:
+      id: contracts
+      label: Contract Validation
+      type: module
+      status: approved
+      annotation: >
+        Validates interface contracts attached to blocks — invariants,
+        preconditions, and postconditions. Aggregates completion stats across
+        the design tree and surfaces violations. Ensures that the architecture's
+        behavioral promises are explicit and verifiable.

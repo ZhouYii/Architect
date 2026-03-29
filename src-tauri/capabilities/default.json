@@ -1,0 +1,36 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-capability",
+  "description": "Capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "fs:default",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-exists",
+    "fs:allow-mkdir",
+    "fs:allow-read-dir",
+    "fs:allow-remove",
+    "shell:allow-spawn",
+    "shell:allow-execute",
+    "shell:allow-stdin-write",
+    "shell:allow-kill",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        { "name": "run-claude", "cmd": "claude", "args": true },
+        { "name": "run-opencode", "cmd": "opencode", "args": true },
+        { "name": "run-ollama", "cmd": "ollama", "args": true }
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        { "name": "run-claude", "cmd": "claude", "args": true },
+        { "name": "run-opencode", "cmd": "opencode", "args": true },
+        { "name": "run-ollama", "cmd": "ollama", "args": true }
+      ]
+    }
+  ]
+}

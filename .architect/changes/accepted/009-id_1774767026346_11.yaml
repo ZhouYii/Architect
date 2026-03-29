@@ -1,0 +1,27 @@
+id: id_1774767026346_11
+description: >
+  There's no way to know if prompts are getting slower, if a provider is failing
+  intermittently, or how much token budget is being consumed. Basic metrics
+  (latency, token count, error rate per provider) would inform both the user's
+  provider choice and prompt tuning decisions.
+status: accepted
+timestamp: 2026-03-29T06:50:26.346Z
+changes:
+  - kind: add_block
+    target_canvas: ai-codesign
+    reason: >
+      There's no way to know if prompts are getting slower, if a provider is
+      failing intermittently, or how much token budget is being consumed. Basic
+      metrics (latency, token count, error rate per provider) would inform both
+      the user's provider choice and prompt tuning decisions.
+    proposal:
+      id: llm-telemetry
+      label: LLM Telemetry
+      type: module
+      status: draft
+      annotation: >
+        Records per-request metrics: provider ID, prompt token estimate,
+        response token count, latency (time-to-first-token and total), and
+        outcome (success, error, cancelled, no-proposals-extracted). Stored in
+        workspace.state.yaml and surfaced in the dashboard panel. No external
+        telemetry -- all data stays local.

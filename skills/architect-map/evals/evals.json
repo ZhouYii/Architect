@@ -1,0 +1,23 @@
+{
+  "skill_name": "architect-map",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Map the Architect codebase at C:\\Users\\yizho\\Desktop\\Architect into its own .architect/ spec. This is a Tauri v2 + React + TypeScript desktop app for visual system design. It has a Rust backend (src-tauri/) and React frontend (src/). Use the architect-map skill to generate the full .architect/tree/ hierarchy.",
+      "expected_output": "A complete .architect/ directory with workspace.yaml, tree/node.yaml (root canvas showing Tauri Shell, React Frontend, Zustand Store as top-level blocks), decomposed child canvases for components/ and lib/, node.interfaces.ts files for arrow types, contracts extracted from the test files, and source_map entries pointing to actual files. Should converge in 2-3 passes.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I have a project at C:\\Users\\yizho\\Desktop\\Architect. Can you map out its architecture? I want to understand how the Rust backend talks to the React frontend and how the LLM integration works.",
+      "expected_output": "Same .architect/ output but triggered by a more casual/indirect request. Should still produce full spec with focus on the Tauri IPC boundary (arrows between Rust commands and frontend invoke() calls) and the LLM provider chain (provider.ts → cli-provider.ts → Tauri shell plugin).",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Generate an Architect workspace from C:\\Users\\yizho\\Desktop\\Architect. Focus on the data flow: how does a block edit in the GUI end up as a YAML file on disk? Trace that path through the architecture.",
+      "expected_output": "Should map the data flow: Canvas.tsx → store.ts (Zustand action) → scheduleFlush → flush.ts → invoke('write_files') → commands.rs → std::fs::write. The .architect/tree should capture this as arrows between blocks with clear interface types and annotations explaining the autosave mechanism.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+id: id_1774767026346_12
+description: |
+  Telemetry needs to observe provider interactions.
+status: accepted
+timestamp: 2026-03-29T06:50:26.346Z
+changes:
+  - kind: add_arrow
+    target_canvas: ai-codesign
+    reason: |
+      Telemetry needs to observe provider interactions.
+    proposal:
+      id: provider-reports-telemetry
+      from: provider-abstraction
+      to: llm-telemetry
+      label: reports request metrics (latency, tokens, outcome)
+      type: publishes
+      order: 7
+      weight: supporting

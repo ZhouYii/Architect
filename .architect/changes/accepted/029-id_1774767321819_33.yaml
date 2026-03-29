@@ -1,0 +1,15 @@
+id: id_1774767321819_33
+description: Diff results feed into the review system as structured change sets.
+status: accepted
+timestamp: 2026-03-29T06:55:21.819Z
+changes:
+  - kind: add_arrow
+    target_canvas: root
+    reason: Diff results feed into the review system as structured change sets.
+    proposal:
+      id: diff-to-review
+      from: diff-engine
+      to: change-review
+      label: produces change set
+      type: publishes
+      weight: normal

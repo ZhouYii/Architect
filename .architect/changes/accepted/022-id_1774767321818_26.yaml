@@ -1,0 +1,25 @@
+id: id_1774767321818_26
+description: >
+  restore_from_archive extracts a checkpoint into the tree directory, then the
+  canvas reloads. The restore path is a critical user-facing feature (confidence
+  to experiment) with no representation on the canvas.
+status: accepted
+timestamp: 2026-03-29T06:55:21.818Z
+changes:
+  - kind: add_arrow
+    target_canvas: root
+    reason: >
+      restore_from_archive extracts a checkpoint into the tree directory, then
+      the canvas reloads. The restore path is a critical user-facing feature
+      (confidence to experiment) with no representation on the canvas.
+    proposal:
+      id: history-restores
+      from: version-history
+      to: visual-canvas
+      label: restores checkpoint
+      type: calls
+      weight: normal
+      annotation: >
+        When the user restores a previous checkpoint, the archived snapshot
+        replaces the working tree and the canvas reloads from the restored
+        state.

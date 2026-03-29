@@ -1,0 +1,213 @@
+id: root
+label: Architect
+parent: null
+components:
+  - id: visual-canvas
+    label: Visual Design Canvas
+    has_children: true
+    ports: []
+    type: service
+    status: approved
+    annotation: >
+      The interactive drawing surface where users create and arrange
+      architecture diagrams. Users place building blocks that represent parts of
+      a system, draw labeled arrows to show how those parts relate, and drill
+      into any block to see its internal structure at a deeper level of detail.
+      The canvas is the primary workspace -- everything the user sees and
+      manipulates lives here.
+  - id: ai-codesign
+    label: AI Co-Design
+    has_children: true
+    ports: []
+    type: service
+    status: approved
+    annotation: >
+      A conversational interface where users chat with AI assistants about their
+      architecture. The AI reads the current design, understands its structure,
+      and proposes concrete changes -- adding new components, restructuring
+      relationships, or decomposing blocks into sub-systems. Proposals are
+      structured so they can be reviewed before taking effect. The user stays in
+      control; the AI accelerates the thinking.
+  - id: change-review
+    label: Design Review
+    has_children: false
+    ports: []
+    type: service
+    status: approved
+    annotation: >
+      Review gateway that supports 10 ACP operation kinds with per-modification
+      accept/reject granularity. Targets use entity IDs (not labels) for
+      deterministic application. Supports both AI-proposed and version-diff
+      sourced change sets.
+  - id: version-history
+    label: Version History
+    has_children: false
+    ports: []
+    type: service
+    status: approved
+    annotation: >
+      The system that tracks how a design evolves over time. Every few seconds,
+      the current state is quietly saved. At meaningful milestones, the user can
+      create named checkpoints -- immutable snapshots that can be compared
+      against or restored later. This gives the user confidence to experiment,
+      knowing they can always return to a known good state.
+  - id: project-storage
+    label: Project Storage
+    has_children: false
+    ports: []
+    type: data-store
+    status: approved
+    annotation: >
+      The structured file system that holds the entire design as human-readable
+      files on disk. Designs are stored as a tree of folders mirroring the
+      architecture's hierarchy, with each level containing its diagram data,
+      interface definitions, and design notes. This format is version-control
+      friendly, making it natural to track designs alongside source code in Git.
+  - id: contracts
+    label: Contract Validation
+    has_children: false
+    ports: []
+    type: module
+    status: approved
+    annotation: >
+      Validates interface contracts attached to blocks — invariants,
+      preconditions, and postconditions. Aggregates completion stats across the
+      design tree and surfaces violations. Ensures that the architecture's
+      behavioral promises are explicit and verifiable.
+  - id: llm-providers
+    label: LLM Provider Layer
+    has_children: false
+    ports: []
+    type: external
+    status: approved
+    annotation: >
+      Abstraction layer that detects and manages external CLI-based LLM tools.
+      Spawns claude, opencode, or ollama as subprocesses — the app holds zero
+      API keys and zero LLM SDK dependencies. Provider detection auto-discovers
+      available tools at startup. Streaming output is relayed via Tauri events.
+  - id: autosave
+    label: Autosave Engine
+    has_children: false
+    ports: []
+    type: module
+    status: approved
+    annotation: >
+      Debounced (5s) persistence engine that serializes the current design state
+      to YAML and writes to disk via Rust. Compares content before writing to
+      skip unchanged files, keeping flush time under 100ms. Also maintains
+      ephemeral workspace state (viewport, selected block) separately from
+      design data.
+  - id: diff-engine
+    label: Diff Engine
+    has_children: false
+    ports: []
+    type: module
+    status: approved
+    annotation: >
+      Custom structural diff that compares Block/Arrow entities by ID and
+      reports field-level changes. Built instead of using generic JSON diff
+      libraries because the domain-specific model produces much cleaner results.
+      ~80 lines, feeds directly into the review system.
+  - id: workspace-init
+    label: Workspace Manager
+    has_children: false
+    ports: []
+    type: module
+    status: approved
+    annotation: >
+      Handles workspace lifecycle: creation wizard, opening existing workspaces,
+      exporting snapshots, and generating AGENT_GUIDE.md for external AI
+      consumption. The agent guide is a ~150-line comprehensive summary
+      auto-generated from the current design tree — it's the system's external
+      API for AI tools.
+connections:
+  - id: canvas-persists
+    from: visual-canvas
+    to: autosave
+    label: triggers flush on change
+    type: calls
+    weight: bold
+    annotation: >
+      As the user works on the canvas, their designs are continuously saved to
+      structured project files, so nothing is ever lost.
+  - id: ai-proposes
+    from: ai-codesign
+    to: change-review
+    label: proposes changes
+    type: publishes
+    weight: bold
+    annotation: >
+      When the AI suggests modifications to the architecture, those proposals
+      flow into the review queue rather than being applied directly, preserving
+      human oversight.
+  - id: review-applies
+    from: change-review
+    to: visual-canvas
+    label: applies approved changes
+    type: calls
+    weight: bold
+    annotation: >
+      Once the user accepts a proposed change, it is applied to the live canvas,
+      updating the architecture diagram in place.
+  - id: canvas-feeds-ai
+    from: visual-canvas
+    to: ai-codesign
+    label: sends DesignSnapshot
+    type: reads
+    weight: bold
+    annotation: >
+      The AI reads the current state of the design so its suggestions are
+      grounded in what actually exists, not guesswork.
+  - id: history-snapshots
+    from: version-history
+    to: project-storage
+    label: archives snapshots
+    type: writes
+    weight: bold
+    annotation: >
+      When the user creates a checkpoint, the current design state is archived
+      as an immutable snapshot within the project storage.
+  - id: history-compares
+    from: version-history
+    to: diff-engine
+    label: compares versions
+    type: calls
+    weight: normal
+    annotation: >
+      Comparing two versions produces a set of differences that the user can
+      review using the same accept/reject workflow used for AI proposals.
+  - id: canvas-validates
+    from: visual-canvas
+    to: contracts
+    label: provides blocks for validation
+    type: reads
+  - id: contracts-report
+    from: contracts
+    to: visual-canvas
+    label: reports compliance status
+    type: calls
+  - id: ai-invokes-llm
+    from: ai-codesign
+    to: llm-providers
+    label: dispatches prompts
+    type: calls
+  - id: autosave-writes
+    from: autosave
+    to: project-storage
+    label: writes changed files
+    type: writes
+  - id: storage-loads
+    from: project-storage
+    to: visual-canvas
+    label: loads design on open
+    type: reads
+  - id: history-restores
+    from: version-history
+    to: visual-canvas
+    label: restores checkpoint
+    type: calls
+  - id: diff-to-review
+    from: diff-engine
+    to: change-review
+    label: produces change set
+    type: publishes

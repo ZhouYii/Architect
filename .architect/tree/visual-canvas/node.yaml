@@ -1,0 +1,23 @@
+id: visual-canvas
+label: Visual Design Canvas
+parent: root
+components:
+  - id: canvas-engine
+    label: Canvas Engine
+    has_children: false
+    ports: []
+    type: module
+    status: draft
+  - id: hierarchy-nav
+    label: Hierarchy Navigation
+    has_children: false
+    ports: []
+    type: module
+    status: draft
+  - id: block-rendering
+    label: Block & Edge Rendering
+    has_children: false
+    ports: []
+    type: module
+    status: draft
+connections: []

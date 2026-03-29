@@ -1,0 +1,28 @@
+id: id_1774767321818_29
+description: >
+  InitWizard.tsx is the first thing users see — it handles workspace creation,
+  opening existing workspaces, and initial setup. workspace.ts also generates
+  AGENT_GUIDE.md (~150 lines) for external AI agents. This is the system's
+  onboarding and external agent interface, both invisible on the canvas.
+status: accepted
+timestamp: 2026-03-29T06:55:21.818Z
+changes:
+  - kind: add_block
+    target_canvas: root
+    reason: >
+      InitWizard.tsx is the first thing users see — it handles workspace
+      creation, opening existing workspaces, and initial setup. workspace.ts
+      also generates AGENT_GUIDE.md (~150 lines) for external AI agents. This is
+      the system's onboarding and external agent interface, both invisible on
+      the canvas.
+    proposal:
+      id: workspace-init
+      label: Workspace Manager
+      type: module
+      status: approved
+      annotation: >
+        Handles workspace lifecycle: creation wizard, opening existing
+        workspaces, exporting snapshots, and generating AGENT_GUIDE.md for
+        external AI consumption. The agent guide is a ~150-line comprehensive
+        summary auto-generated from the current design tree — it's the system's
+        external API for AI tools.

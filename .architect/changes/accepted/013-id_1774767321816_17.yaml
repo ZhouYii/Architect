@@ -1,0 +1,19 @@
+id: id_1774767321816_17
+description: >
+  Contracts are defined on blocks (via the canvas) and validated against the
+  design. The contract system reads the current design to check compliance.
+status: accepted
+timestamp: 2026-03-29T06:55:21.816Z
+changes:
+  - kind: add_arrow
+    target_canvas: root
+    reason: >
+      Contracts are defined on blocks (via the canvas) and validated against the
+      design. The contract system reads the current design to check compliance.
+    proposal:
+      id: canvas-validates
+      from: visual-canvas
+      to: contracts
+      label: provides blocks for validation
+      type: reads
+      weight: normal
