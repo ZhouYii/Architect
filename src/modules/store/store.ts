@@ -36,6 +36,9 @@ export interface DesignStoreActions {
   // View mode & code graph
   setViewMode: (mode: ViewMode) => void;
   setCodeGraph: (graph: CodeGraph | null) => void;
+
+  // Workspace bulk-load
+  loadCanvases: (canvases: Record<string, CanvasNode>, currentPath: string[]) => void;
 }
 
 export type DesignStore = DesignStoreState & DesignStoreActions;
@@ -168,6 +171,15 @@ export const useDesignStore = create<DesignStore>()(
     setCodeGraph: (graph) =>
       set((state) => {
         state.code_graph = graph;
+      }),
+
+    // ── Workspace bulk-load ───────────────────────────────────────────────
+
+    loadCanvases: (canvases, currentPath) =>
+      set((state) => {
+        state.canvases = canvases;
+        state.ui.current_path = currentPath;
+        state.ui.selected_node_id = null;
       }),
   }))
 );

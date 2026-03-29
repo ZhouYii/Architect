@@ -1,0 +1,480 @@
+id: serialization-layer
+label: Serialization Layer
+parent: project-storage
+components:
+  - id: yaml-serializer
+    label: YAML Serializer
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      serializeNodeYaml(canvas): Converts a CanvasNode to on-disk YAML format. Maps in-memory camelCase fields to snake_case (hasChildren -> has_children, fromPort -> from_port, toPort -> to_port). Omits optional fields when falsy/empty (type, status, annotation, tags, contract, source_map, _meta). Serializes ports via serializePort() and contracts via serializeContractSet() (omits empty arrays). Uses the 'yaml' npm library for YAML.stringify.
+    contract:
+      invariants:
+        - id: ys-inv-1
+          description: |
+            serializeNodeYaml output always contains id, label, parent, components, and connections keys.
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: serializes to valid YAML
+        - id: ys-inv-2
+          description: |
+            Optional fields (type, status, annotation, tags, contract, source_map) are omitted when falsy/empty, producing cleaner YAML.
+          status: implemented
+        - id: ys-inv-3
+          description: |
+            Ports are serialized with contract data included when present. serializePort handles all Port fields including nested contract.
+          status: implemented
+      test_cases:
+        - id: ys-tc-1
+          name: serializes to valid YAML
+          description: Verifies output contains expected fields
+          inputs:
+            canvas: CanvasNode with 2 blocks, 1 arrow, ports
+          expectedOutputs:
+            contains:
+              - "id: game-server"
+              - "label: Game Server"
+              - "parent: root"
+              - Gacha Service
+              - grant item
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: serializes to valid YAML
+    source_map:
+      files:
+        - src/lib/yaml.ts
+      entry_point: src/lib/yaml.ts
+  - id: yaml-deserializer
+    label: YAML Deserializer
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      deserializeNodeYaml(yaml): Parses YAML string back to CanvasNode (minus layout). Performs backward-compatible field normalization: 'in'->'entry', 'out'->'exit' for port directions. Maps snake_case back to camelCase (has_children -> hasChildren, from_port -> fromPort). Returns Omit<CanvasNode, 'layout'> because layout is deserialized separately. Handles missing optional fields gracefully with defaults.
+    contract:
+      invariants:
+        - id: yd-inv-1
+          description: |
+            Backward compatibility: 'in' direction normalizes to 'entry', 'out' normalizes to 'exit'.
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: "backward-compatible: deserializes old in/out directions"
+        - id: yd-inv-2
+          description: |
+            Round-trip: deserializeNodeYaml(serializeNodeYaml(canvas)) produces a structure matching the original (excluding layout).
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: deserializes back to matching structure
+        - id: yd-inv-3
+          description: |
+            Port type is preserved through round-trip. A port with type='PullResult' deserializes back with the same type.
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: deserializes back to matching structure
+      test_cases:
+        - id: yd-tc-1
+          name: deserializes back to matching structure
+          inputs:
+            yaml: serializeNodeYaml(canvas) output
+          expectedOutputs:
+            id: game-server
+            components_length: 2
+            port_directions:
+              - entry
+              - exit
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: deserializes back to matching structure
+        - id: yd-tc-2
+          name: backward-compatible direction normalization
+          inputs:
+            yaml: "YAML with direction: in and direction: out"
+          expectedOutputs:
+            normalized_directions:
+              - entry
+              - exit
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: "backward-compatible: deserializes old in/out directions"
+    source_map:
+      files:
+        - src/lib/yaml.ts
+      entry_point: src/lib/yaml.ts
+  - id: layout-serializer
+    label: Layout JSON Serializer
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      serializeLayoutJson(layout): JSON.stringify with 2-space indent. deserializeLayoutJson(json): JSON.parse. Trivial implementations because CanvasLayout is a simple Record<string, Position>.
+    contract:
+      invariants:
+        - id: ls-inv-1
+          description: |
+            Layout JSON always uses 2-space indentation for readability.
+          status: implemented
+    source_map:
+      files:
+        - src/lib/yaml.ts
+      entry_point: src/lib/yaml.ts
+  - id: tree-serializer
+    label: Tree-to-Files Serializer
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      serializeTreeToFiles(nodes): Walks the entire Record<ID, CanvasNode> and produces an Array<{path, content}> for all files. For each canvas: generates node.yaml + node.layout.json. For each block with interfacesContent: generates node.interfaces.ts. For each block with notesContent: generates node.notes.md. Uses buildCanvasPath() to compute directory paths from the parentId hierarchy. Root canvas files have no prefix; child canvases get "childId/" prefix.
+    contract:
+      invariants:
+        - id: ts-inv-1
+          description: |
+            Root canvas files have empty prefix (path = "node.yaml"). Child canvas files have path = "{childId}/node.yaml".
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: produces files for each canvas
+        - id: ts-inv-2
+          description: |
+            node.interfaces.ts is only generated when block.interfacesContent is truthy.
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: includes interface files when content exists
+        - id: ts-inv-3
+          description: |
+            Every canvas produces exactly 2 mandatory files (node.yaml, node.layout.json) plus 0-2 optional files per block.
+          status: implemented
+      preconditions:
+        - id: ts-pre-1
+          description: |
+            nodes must contain a 'root' key. buildCanvasPath walks parentId upward and stops at root.
+          status: implemented
+      test_cases:
+        - id: ts-tc-1
+          name: produces files for each canvas
+          inputs:
+            nodes: root with 1 hasChildren block + child canvas
+          expectedOutputs:
+            paths:
+              - node.yaml
+              - node.layout.json
+              - b1/node.yaml
+              - b1/node.layout.json
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: produces files for each canvas
+        - id: ts-tc-2
+          name: includes interface files when content exists
+          inputs:
+            nodes: root with block that has interfacesContent
+          expectedOutputs:
+            contains_path: node.interfaces.ts
+            contains_content: interface Foo
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: includes interface files when content exists
+    source_map:
+      files:
+        - src/lib/yaml.ts
+      entry_point: src/lib/yaml.ts
+  - id: workspace-config-serializer
+    label: Workspace Config Serializer
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      serializeWorkspaceConfig / deserializeWorkspaceConfig: Round-trips the workspace.yaml file. Deserializer handles migration from old field names: 'version' -> 'last_checkpoint', 'last_major_hash' -> 'last_checkpoint_hash'. Default LLM config: { preferred_provider: 'claude-code', ollama_model: 'llama3' }.
+    contract:
+      invariants:
+        - id: wc-inv-1
+          description: |
+            Workspace config round-trips correctly: deserialize(serialize(config)) deep-equals original config.
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: round-trips correctly
+        - id: wc-inv-2
+          description: |
+            Migration: old 'version' field maps to 'last_checkpoint'; old 'last_major_hash' maps to 'last_checkpoint_hash'.
+          status: implemented
+      test_cases:
+        - id: wc-tc-1
+          name: workspace config round-trip
+          inputs:
+            config: WorkspaceConfig with all fields populated
+          expectedOutputs:
+            round_trip_equals: true
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: round-trips correctly
+    source_map:
+      files:
+        - src/lib/yaml.ts
+      entry_point: src/lib/yaml.ts
+  - id: workspace-state-serializer
+    label: Workspace State Serializer
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      serializeWorkspaceState / deserializeWorkspaceState: Round-trips the workspace.state.yaml file. Simple YAML.stringify / YAML.parse with no migration needed.
+    contract:
+      invariants:
+        - id: ws-inv-1
+          description: |
+            Workspace state round-trips correctly.
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: round-trips correctly
+      test_cases:
+        - id: ws-tc-1
+          name: workspace state round-trip
+          inputs:
+            state: WorkspaceState with version='3.14', dirty=true
+          expectedOutputs:
+            round_trip_equals: true
+          status: verified
+          impl:
+            file: src/__tests__/yaml.test.ts
+            symbol: round-trips correctly
+    source_map:
+      files:
+        - src/lib/yaml.ts
+      entry_point: src/lib/yaml.ts
+  - id: mermaid-generator
+    label: Mermaid Diagram Generator
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      generateMermaidDiagram(canvas): Converts a CanvasNode to Mermaid graph LR syntax. Maps BlockType to Mermaid shapes (service=[[...]], data-store=[(...)], external={{...}}, etc.). Sanitizes IDs by replacing non-alphanumeric chars with underscores. Escapes double quotes in labels. Arrows without labels use plain --> syntax.
+    contract:
+      invariants:
+        - id: mg-inv-1
+          description: |
+            Output always starts with "graph LR".
+          status: verified
+          impl:
+            file: src/__tests__/mermaid.test.ts
+            symbol: generates valid mermaid for simple canvas
+        - id: mg-inv-2
+          description: |
+            Block type determines Mermaid shape: service=[[]], module=[], data-store=[()], external={{}}, etc.
+          status: verified
+          impl:
+            file: src/__tests__/mermaid.test.ts
+            symbol: uses type-appropriate shapes
+        - id: mg-inv-3
+          description: |
+            Empty canvas produces just "graph LR" with no nodes or edges.
+          status: verified
+          impl:
+            file: src/__tests__/mermaid.test.ts
+            symbol: handles empty canvas
+        - id: mg-inv-4
+          description: |
+            Arrows without labels produce "from --> to" (no pipe syntax).
+          status: verified
+          impl:
+            file: src/__tests__/mermaid.test.ts
+            symbol: handles arrows without labels
+      test_cases:
+        - id: mg-tc-1
+          name: generates valid mermaid for simple canvas
+          inputs:
+            canvas: 2 blocks (service + module) + 1 labeled arrow
+          expectedOutputs:
+            contains:
+              - graph LR
+              - svc_a
+              - Service A
+              - -->
+              - calls
+          status: verified
+          impl:
+            file: src/__tests__/mermaid.test.ts
+            symbol: generates valid mermaid for simple canvas
+        - id: mg-tc-2
+          name: uses type-appropriate shapes
+          inputs:
+            canvas: data-store block + external block
+          expectedOutputs:
+            contains:
+              - "[("
+              - "{{"
+          status: verified
+          impl:
+            file: src/__tests__/mermaid.test.ts
+            symbol: uses type-appropriate shapes
+        - id: mg-tc-3
+          name: handles empty canvas
+          inputs:
+            canvas: empty canvas (no components, no connections)
+          expectedOutputs:
+            exact: graph LR
+          status: verified
+          impl:
+            file: src/__tests__/mermaid.test.ts
+            symbol: handles empty canvas
+        - id: mg-tc-4
+          name: handles arrows without labels
+          inputs:
+            canvas: 2 blocks + 1 unlabeled arrow
+          expectedOutputs:
+            contains:
+              - a --> b
+          status: verified
+          impl:
+            file: src/__tests__/mermaid.test.ts
+            symbol: handles arrows without labels
+    source_map:
+      files:
+        - src/lib/mermaid.ts
+      entry_point: src/lib/mermaid.ts
+  - id: contract-set-serializer
+    label: Contract Set Serializer
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      serializeContractSet(c): Converts a ContractSet to a plain object, omitting empty arrays. Returns undefined if all arrays are empty (resulting in the contract field being omitted from YAML). deserializeContractSetData(data): Reconstructs ContractSet from raw YAML data, defaulting missing arrays to [].
+    contract:
+      invariants:
+        - id: cs-inv-1
+          description: |
+            Empty ContractSet (all arrays empty) serializes to undefined, causing the contract field to be omitted from the YAML output.
+          status: implemented
+        - id: cs-inv-2
+          description: |
+            Missing arrays in raw data default to [] during deserialization.
+          status: implemented
+    source_map:
+      files:
+        - src/lib/yaml.ts
+      entry_point: src/lib/yaml.ts
+  - id: path-builder
+    label: Canvas Path Builder
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      buildCanvasPath(nodes, canvasId): Builds directory path by walking the parentId chain upward. Produces paths like "game-server/gacha-service/" for nested canvases. Root canvas returns empty string. Each segment ends with "/". Used by serializeTreeToFiles to determine output paths.
+    contract:
+      invariants:
+        - id: pb-inv-1
+          description: |
+            Root canvas (id='root') produces empty string prefix.
+          status: implemented
+        - id: pb-inv-2
+          description: |
+            Path segments are the canvas IDs joined with '/'. Each segment includes trailing '/'.
+          status: implemented
+      preconditions:
+        - id: pb-pre-1
+          description: |
+            The parentId chain must terminate at root. Infinite loops are not guarded against.
+          status: implemented
+    source_map:
+      files:
+        - src/lib/yaml.ts
+      entry_point: src/lib/yaml.ts
+connections:
+  - id: tree-calls-yaml
+    from: tree-serializer
+    to: yaml-serializer
+    label: serializeNodeYaml(canvas)
+    type: calls
+    order: 1
+    weight: normal
+    annotation: |
+      For each canvas in the nodes map, the tree serializer calls serializeNodeYaml to produce the node.yaml content.
+  - id: tree-calls-layout
+    from: tree-serializer
+    to: layout-serializer
+    label: serializeLayoutJson(canvas.layout)
+    type: calls
+    order: 2
+    weight: normal
+    annotation: |
+      For each canvas, the tree serializer calls serializeLayoutJson to produce the node.layout.json content.
+  - id: tree-calls-path
+    from: tree-serializer
+    to: path-builder
+    label: buildCanvasPath(nodes, canvasId)
+    type: calls
+    order: 3
+    weight: normal
+    annotation: |
+      For each non-root canvas, the tree serializer calls buildCanvasPath to determine the directory prefix for output files.
+  - id: yaml-serializes-contracts
+    from: yaml-serializer
+    to: contract-set-serializer
+    label: serializeContractSet(block.contract)
+    type: calls
+    order: 4
+    weight: normal
+    annotation: |
+      When serializing blocks and ports, the YAML serializer delegates contract serialization to the contract set serializer.
+  - id: yaml-deserializes-contracts
+    from: yaml-deserializer
+    to: contract-set-serializer
+    label: deserializeContractSetData(raw.contract)
+    type: calls
+    order: 5
+    weight: normal
+    annotation: |
+      When deserializing blocks and ports, the YAML deserializer delegates contract reconstruction to deserializeContractSetData.
+  - id: config-independent
+    from: workspace-config-serializer
+    to: workspace-state-serializer
+    label: share YAML.stringify/parse
+    type: depends
+    order: 6
+    weight: normal
+    annotation: |
+      Both workspace serializers use the same yaml npm library. They are independent functions but colocated in the same file.
+  - id: mermaid-independent
+    from: mermaid-generator
+    to: yaml-serializer
+    label: reads CanvasNode model (no call dependency)
+    type: reads
+    order: 7
+    weight: normal
+    annotation: |
+      The Mermaid generator reads the same CanvasNode type but does not call the YAML serializer. It is invoked at checkpoint time, not during normal flush.
+ports:
+  - id: sl-inmemory-entry
+    label: in-memory canvas tree
+    direction: entry
+    parent_arrow: autosave-serializes
+    bound_to: tree-serializer
+    annotation: |
+      The flush function calls serializeTreeToFiles(store.nodes), which walks all canvas nodes and produces an array of {path, content} pairs.
+  - id: sl-files-exit
+    label: file content array
+    direction: exit
+    parent_arrow: serialization-writes-fs
+    bound_to: tree-serializer
+    annotation: |
+      The serialized files array is passed to invoke('write_files', {base, files}) for disk persistence via Rust IPC.

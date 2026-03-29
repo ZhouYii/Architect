@@ -8,73 +8,40 @@ components:
     ports: []
     type: module
     status: approved
-    annotation: >
-      Holds pending ACP objects in the store's pendingACPs array. Each proposal
-      has a lifecycle: pending -> accepted or dismissed. The queue is the buffer
-      between AI output (fast, bulk) and human review (slow, deliberate).
-      Conflict detection runs here -- if two pending ACPs target the same
-      component, a warning surfaces in the UI. Staleness checks compare the
-      ACP's based_on_checkpoint against the current checkpoint to warn when the
-      design has moved on since the suggestion was made.
+    annotation: |
+      Holds pending ACP objects in the store's pendingACPs array. Each proposal has a lifecycle: pending -> accepted or dismissed. The queue is the buffer between AI output (fast, bulk) and human review (slow, deliberate). Conflict detection runs here -- if two pending ACPs target the same component, a warning surfaces in the UI. Staleness checks compare the ACP's based_on_checkpoint against the current checkpoint to warn when the design has moved on since the suggestion was made.
   - id: suggestion-presentation
     label: Suggestion Presentation
     has_children: false
     ports: []
     type: module
     status: approved
-    annotation: >
-      Renders each pending ACP as an actionable card showing the change kind,
-      reason, and target. Cards appear inline within the chat message that
-      generated them. Each card has Apply and Dismiss buttons. Conflict and
-      staleness warnings are shown as colored badges. This layer is purely
-      presentational -- it reads proposal state and dispatches accept/dismiss
-      actions but never mutates the design directly.
+    annotation: |
+      Renders each pending ACP as an actionable card showing the change kind, reason, and target. Cards appear inline within the chat message that generated them. Each card has Apply and Dismiss buttons. Conflict and staleness warnings are shown as colored badges. This layer is purely presentational -- it reads proposal state and dispatches accept/dismiss actions but never mutates the design directly.
   - id: diff-rendering
     label: Diff Rendering
     has_children: false
     ports: []
     type: module
     status: approved
-    annotation: >
-      The merge review overlay that shows a flat list of DiffEntry items (added,
-      removed, modified, decomposed, moved blocks and arrows). Each entry can be
-      individually accepted or rejected, with bulk accept-all and reject-all
-      actions. A progress indicator shows how many entries have been resolved.
-      This component serves both version comparison and could serve AI batch
-      reviews. The boundary exists because diff review is a distinct interaction
-      pattern from the inline suggestion cards -- it requires a dedicated modal
-      overlay with its own accept/reject state tracking.
+    annotation: |
+      The merge review overlay that shows a flat list of DiffEntry items (added, removed, modified, decomposed, moved blocks and arrows). Each entry can be individually accepted or rejected, with bulk accept-all and reject-all actions. A progress indicator shows how many entries have been resolved. This component serves both version comparison and could serve AI batch reviews. The boundary exists because diff review is a distinct interaction pattern from the inline suggestion cards -- it requires a dedicated modal overlay with its own accept/reject state tracking.
   - id: change-application
     label: Change Application
     has_children: false
     ports: []
     type: module
     status: approved
-    annotation: >
-      The engine that translates an accepted ACP into concrete store mutations.
-      Handles all ACP kinds: add/remove/modify blocks and arrows, decompose
-      (creates child canvas with sub-components), refine_arrow (updates
-      interface contracts), and restructure (move blocks between canvases). The
-      cross-canvas search pattern (scanning all canvases to find a target by ID)
-      is a trade-off: it makes ACPs location-agnostic (the AI does not need to
-      know which canvas a block is on), but scales linearly with the number of
-      canvases.
+    annotation: |
+      The engine that translates an accepted ACP into concrete store mutations. Handles all ACP kinds: add/remove/modify blocks and arrows, decompose (creates child canvas with sub-components), refine_arrow (updates interface contracts), and restructure (move blocks between canvases). The cross-canvas search pattern (scanning all canvases to find a target by ID) is a trade-off: it makes ACPs location-agnostic (the AI does not need to know which canvas a block is on), but scales linearly with the number of canvases.
   - id: diff-computation
     label: Diff Computation
     has_children: false
     ports: []
     type: module
     status: approved
-    annotation: >
-      Pure-function engine that compares two canvas trees and produces a flat
-      list of DiffEntry objects. Detects additions, removals, modifications
-      (with field-level granularity), decompositions (hasChildren false->true),
-      and cross-canvas moves (same block ID appearing as removed from one canvas
-      and added to another). The algorithm is O(B+A) per canvas where B=blocks
-      and A=arrows, using Map lookups for ID matching. It is intentionally
-      stateless -- the same inputs always produce the same diff -- which makes
-      it testable and safe to call from both version comparison and future undo
-      flows.
+    annotation: |
+      Pure-function engine that compares two canvas trees and produces a flat list of DiffEntry objects. Detects additions, removals, modifications (with field-level granularity), decompositions (hasChildren false->true), and cross-canvas moves (same block ID appearing as removed from one canvas and added to another). The algorithm is O(B+A) per canvas where B=blocks and A=arrows, using Map lookups for ID matching. It is intentionally stateless -- the same inputs always produce the same diff -- which makes it testable and safe to call from both version comparison and future undo flows.
 connections:
   - id: queue-feeds-presentation
     from: proposal-queue
@@ -83,10 +50,8 @@ connections:
     type: reads
     order: 1
     weight: normal
-    annotation: >
-      The suggestion cards read from the pending queue to render each ACP. When
-      the user clicks Apply or Dismiss, the card dispatches a resolveACP action
-      that updates the queue entry's status.
+    annotation: |
+      The suggestion cards read from the pending queue to render each ACP. When the user clicks Apply or Dismiss, the card dispatches a resolveACP action that updates the queue entry's status.
   - id: presentation-triggers-apply
     from: suggestion-presentation
     to: change-application
@@ -94,10 +59,8 @@ connections:
     type: calls
     order: 2
     weight: normal
-    annotation: >
-      When the user clicks Apply on a suggestion card, applyACP() is called with
-      the full ACP object. The change application layer processes each ACPChange
-      sequentially, mutating the store.
+    annotation: |
+      When the user clicks Apply on a suggestion card, applyACP() is called with the full ACP object. The change application layer processes each ACPChange sequentially, mutating the store.
   - id: diff-feeds-rendering
     from: diff-computation
     to: diff-rendering
@@ -105,10 +68,8 @@ connections:
     type: reads
     order: 3
     weight: normal
-    annotation: >
-      The diff engine produces DiffEntry arrays that the merge review overlay
-      renders as reviewable cards. The rendering layer does not recompute diffs
-      -- it only presents what it receives.
+    annotation: |
+      The diff engine produces DiffEntry arrays that the merge review overlay renders as reviewable cards. The rendering layer does not recompute diffs -- it only presents what it receives.
   - id: diff-rendering-applies
     from: diff-rendering
     to: change-application
@@ -116,35 +77,27 @@ connections:
     type: calls
     order: 4
     weight: normal
-    annotation: >
-      When all diff entries have been resolved and the user exports, accepted
-      entries could be converted to ACPs and applied. Currently the diff
-      rendering surfaces differences for review but full selective apply is
-      still being built.
+    annotation: |
+      When all diff entries have been resolved and the user exports, accepted entries could be converted to ACPs and applied. Currently the diff rendering surfaces differences for review but full selective apply is still being built.
 ports:
   - id: cr-proposals-entry
     label: incoming change proposals
     direction: entry
     parent_arrow: ai-proposes
     bound_to: proposal-queue
-    annotation: >
-      ACP objects from the AI co-design system land in the pending queue. Each
-      carries a status (pending/accepted/dismissed) that gates whether it can be
-      applied.
+    annotation: |
+      ACP objects from the AI co-design system land in the pending queue. Each carries a status (pending/accepted/dismissed) that gates whether it can be applied.
   - id: cr-diffs-entry
     label: version differences
     direction: entry
     parent_arrow: history-compares
     bound_to: diff-rendering
-    annotation: >
-      Diff entries from version comparison enter the same review workflow as AI
-      proposals, ensuring a single consistent accept/reject experience
-      regardless of where changes originate.
+    annotation: |
+      Diff entries from version comparison enter the same review workflow as AI proposals, ensuring a single consistent accept/reject experience regardless of where changes originate.
   - id: cr-apply-exit
     label: accepted changes
     direction: exit
     parent_arrow: review-applies
     bound_to: change-application
-    annotation: >
-      Only changes that pass human review are applied to the live canvas. This
-      is the core gatekeeping guarantee of the system.
+    annotation: |
+      Only changes that pass human review are applied to the live canvas. This is the core gatekeeping guarantee of the system.

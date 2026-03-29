@@ -15,9 +15,8 @@ import { useDesignStore } from '../store/store.js';
 import {
   selectCurrentCanvas,
   selectCurrentCanvasId,
-  selectAggregateStatus,
 } from '../store/selectors.js';
-import type { DesignNode } from '../store/types.js';
+import type { DesignNode, StatusAggregate } from '../store/types.js';
 import { TOKENS } from '../../styles/theme.js';
 import { BlockNode, type BlockNodeData } from './BlockNode.js';
 import { ArrowEdge, type ArrowEdgeData } from './ArrowEdge.js';
@@ -32,7 +31,7 @@ const EDGE_TYPES = { arrowEdge: ArrowEdge };
 
 function blockToFlowNode(
   block: DesignNode,
-  aggregate: ReturnType<typeof selectAggregateStatus>,
+  aggregate: StatusAggregate,
   selectedId: string | null
 ): Node<BlockNodeData> {
   return {
@@ -87,7 +86,7 @@ function ConceptualCanvas() {
 
   // Build aggregate map for child canvases referenced by blocks
   const aggregateMap = useMemo(() => {
-    const map: Record<string, ReturnType<ReturnType<typeof selectAggregateStatus>>> = {};
+    const map: Record<string, StatusAggregate> = {};
     if (!canvas) return map;
     for (const block of canvas.components) {
       if (block.has_children && block.child_canvas_id) {

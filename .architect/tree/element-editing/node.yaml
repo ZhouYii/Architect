@@ -1,0 +1,262 @@
+id: element-editing
+label: Element Editing
+parent: visual-canvas
+components:
+  - id: side-panel-shell
+    label: Side Panel Shell
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      The outer container that manages tab selection (details, interfaces, notes, contracts, chat, versions, dashboard), resizable panel width (280-700px via mouse drag), and routes to the active tab's content. Reads selectedBlockId and selectedArrowId from store to determine what to display. Tab state is local React state, not persisted.
+    contract:
+      invariants:
+        - id: sp-inv-1
+          description: |
+            Panel width is clamped to [280, 700] pixels. Resize uses mousemove/mouseup window listeners attached only while dragging.
+          status: implemented
+        - id: sp-inv-2
+          description: |
+            Exactly seven tabs exist: details, interfaces, notes, contracts, chat, versions, dashboard. Tab order is fixed.
+          status: implemented
+    source_map:
+      files:
+        - src/components/SidePanel.tsx
+      entry_point: src/components/SidePanel.tsx
+  - id: block-property-editor
+    label: Block Property Editor
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      The "Details" tab content when a block is selected. Renders editable fields for label (text input), type (select: 8 BlockType values), status (select: 5 Status values), and annotation (textarea). Shows a read-only port list. Provides "Decompose into child canvas" button for leaf blocks (calls createChildCanvas + navigateTo) and "Enter child canvas" button for parent blocks.
+    contract:
+      invariants:
+        - id: bp-inv-1
+          description: |
+            Type dropdown offers exactly 8 options matching the BlockType union: service, module, class, function, data-store, external, queue, config.
+          status: implemented
+        - id: bp-inv-2
+          description: |
+            Status dropdown offers exactly 5 options matching the Status union: draft, approved, implementing, done, deprecated.
+          status: implemented
+      preconditions:
+        - id: bp-pre-1
+          description: |
+            selectedBlock must be non-null. If null, the Details tab shows canvas summary (block count, connection count) instead.
+          status: implemented
+      postconditions:
+        - id: bp-post-1
+          description: |
+            Every field onChange calls updateBlock(selectedBlock.id, { field: value }), which sets store.dirty = true.
+          status: implemented
+        - id: bp-post-2
+          description: |
+            "Decompose" calls createChildCanvas(currentPath, blockId) then navigateTo(blockId). Block's hasChildren becomes true and a new empty CanvasNode is created in store.nodes.
+          status: implemented
+    source_map:
+      files:
+        - src/components/SidePanel.tsx
+      entry_point: src/components/SidePanel.tsx
+  - id: arrow-property-editor
+    label: Arrow Property Editor
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      The "Details" tab content when an arrow is selected. Shows read-only from/to block labels, editable label, type select (6 ArrowType values), and a full interface editor sub-section with request (textarea), response (textarea), async (checkbox), error_handling (select: 4 options), and protocol (select: 4 options). Includes a "Delete Arrow" button.
+    contract:
+      invariants:
+        - id: ap-inv-1
+          description: |
+            ArrowType dropdown offers exactly 6 options: calls, reads, writes, publishes, subscribes, depends.
+          status: implemented
+        - id: ap-inv-2
+          description: |
+            Interface editor fields update the arrow.interface object via spread-merge: { ...selectedArrow.interface, [field]: value }.
+          status: implemented
+      preconditions:
+        - id: ap-pre-1
+          description: |
+            selectedArrow must be non-null. Selection is mutually exclusive with block selection (selectArrow clears selectedBlockId).
+          status: implemented
+      postconditions:
+        - id: ap-post-1
+          description: |
+            "Delete Arrow" calls removeArrow(selectedArrow.id), which removes the connection from canvas.connections and clears selectedArrowId.
+          status: implemented
+    source_map:
+      files:
+        - src/components/SidePanel.tsx
+      entry_point: src/components/SidePanel.tsx
+  - id: interface-editor
+    label: Interface Code Editor
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      The "Interfaces" tab. A raw textarea with spellCheck=false for editing TypeScript interface definitions. Content is stored in block.interfacesContent and serialized to node.interfaces.ts on flush. Default placeholder is "// TypeScript interfaces\n". This is a plain text editor, not a Monaco/CodeMirror instance.
+    contract:
+      invariants:
+        - id: ie-inv-1
+          description: |
+            interfacesContent defaults to "// TypeScript interfaces\n" when undefined. The textarea always has a value (never null).
+          status: implemented
+      preconditions:
+        - id: ie-pre-1
+          description: A block must be selected to edit interfaces.
+          status: implemented
+      postconditions:
+        - id: ie-post-1
+          description: |
+            onChange calls updateBlock(id, { interfacesContent: value }), persisted to node.interfaces.ts on next flush.
+          status: implemented
+    source_map:
+      files:
+        - src/components/SidePanel.tsx
+      entry_point: src/components/SidePanel.tsx
+  - id: notes-editor
+    label: Notes Editor
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      The "Notes" tab. A plain textarea for Markdown design notes, decisions, and rationale. Content stored in block.notesContent and serialized to node.notes.md on flush. No Markdown preview is provided.
+    contract:
+      invariants:
+        - id: ne-inv-1
+          description: |
+            notesContent defaults to empty string when undefined.
+          status: implemented
+      preconditions:
+        - id: ne-pre-1
+          description: A block must be selected to edit notes.
+          status: implemented
+      postconditions:
+        - id: ne-post-1
+          description: |
+            onChange calls updateBlock(id, { notesContent: value }), persisted to node.notes.md on next flush.
+          status: implemented
+    source_map:
+      files:
+        - src/components/SidePanel.tsx
+      entry_point: src/components/SidePanel.tsx
+  - id: contract-editor
+    label: Contract Editor
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      The "Contracts" tab. Manages four contract categories: invariants, preconditions, postconditions, and test cases. Each category has add/remove/edit operations. Contract entries are stored in block.contract (ContractSet). Add operations create entries with genId() and status='draft'. The editor uses helper functions (addInvariant, updateInvariant, removeInvariant, etc.) that clone arrays and call updateContracts -> updateBlock. createEmptyContract() from lib/contracts.ts provides the default.
+    contract:
+      invariants:
+        - id: ce-inv-1
+          description: |
+            New contract entries always start with status='draft' and a unique ID from genId().
+          status: implemented
+        - id: ce-inv-2
+          description: |
+            Removing an entry filters by index, preserving order of remaining entries.
+          status: implemented
+      preconditions:
+        - id: ce-pre-1
+          description: A block must be selected to edit contracts.
+          status: implemented
+      postconditions:
+        - id: ce-post-1
+          description: |
+            All contract mutations update the entire ContractSet at once via updateBlock(id, { contract: updatedSet }), triggering dirty flag.
+          status: implemented
+    source_map:
+      files:
+        - src/components/SidePanel.tsx
+        - src/lib/contracts.ts
+      entry_point: src/components/SidePanel.tsx
+  - id: contract-dashboard
+    label: Contract Dashboard
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      The "Dashboard" tab. Read-only aggregate view of contract coverage across all canvases. Shows total entries, implemented count, verified count, and a per-canvas breakdown. Iterates all nodes and all blocks to sum contract entry counts. No mutation capability.
+    contract:
+      invariants:
+        - id: cd-inv-1
+          description: |
+            Total = sum of invariants + preconditions + postconditions across all blocks in all canvases. Test cases are not counted.
+          status: implemented
+    source_map:
+      files:
+        - src/components/ContractDashboard.tsx
+      entry_point: src/components/ContractDashboard.tsx
+connections:
+  - id: shell-routes-to-block
+    from: side-panel-shell
+    to: block-property-editor
+    label: renders when activeTab=details && selectedBlock
+    type: calls
+    order: 1
+    weight: normal
+    annotation: |
+      The shell conditionally renders the block property editor when the details tab is active and a block is selected. This is a JSX conditional branch, not a function call.
+  - id: shell-routes-to-arrow
+    from: side-panel-shell
+    to: arrow-property-editor
+    label: renders when activeTab=details && selectedArrow
+    type: calls
+    order: 2
+    weight: normal
+    annotation: |
+      The shell conditionally renders the arrow property editor when the details tab is active and an arrow is selected. Block selection takes priority (checked first in the conditional chain).
+  - id: shell-routes-to-interfaces
+    from: side-panel-shell
+    to: interface-editor
+    label: renders when activeTab=interfaces
+    type: calls
+    order: 3
+    weight: normal
+  - id: shell-routes-to-notes
+    from: side-panel-shell
+    to: notes-editor
+    label: renders when activeTab=notes
+    type: calls
+    order: 4
+    weight: normal
+  - id: shell-routes-to-contracts
+    from: side-panel-shell
+    to: contract-editor
+    label: renders when activeTab=contracts
+    type: calls
+    order: 5
+    weight: normal
+  - id: shell-routes-to-dashboard
+    from: side-panel-shell
+    to: contract-dashboard
+    label: renders when activeTab=dashboard
+    type: calls
+    order: 6
+    weight: normal
+  - id: contract-editor-uses-lib
+    from: contract-editor
+    to: contract-dashboard
+    label: shares ContractSet model
+    type: reads
+    order: 7
+    weight: normal
+    annotation: |
+      Both the contract editor and dashboard operate on the same ContractSet type. The editor writes contracts; the dashboard reads them for aggregation. They share the createEmptyContract() factory.
+ports:
+  - id: ee-state-exit
+    label: property mutations
+    direction: exit
+    parent_arrow: editing-mutates-state
+    bound_to: block-property-editor
+    annotation: |
+      Every field change in any editing tab calls store.updateBlock or store.updateArrow, which sets dirty=true and schedules autosave.

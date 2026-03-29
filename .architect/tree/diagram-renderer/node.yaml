@@ -1,0 +1,163 @@
+id: diagram-renderer
+label: Diagram Rendering
+parent: visual-canvas
+components:
+  - id: react-flow-bridge
+    label: React Flow Bridge
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      The Canvas component that wires Zustand state to React Flow. Converts Block[] to Node[] and Arrow[] to Edge[], manages useNodesState/useEdgesState, handles onConnect (creates new arrows via store.addArrow), syncs position changes back on drag-end, and dispatches selection events (onNodeClick, onEdgeClick, onPaneClick). Uses key={currentPath} to force remount on canvas switch. Configures snap-to-grid (16px), fitView, and default edge options.
+    contract:
+      invariants:
+        - id: dr-inv-1
+          description: |
+            Every Block in canvas.components maps to exactly one React Flow Node. rfNodes.length === canvas.components.length.
+          status: implemented
+        - id: dr-inv-2
+          description: |
+            Every Arrow in canvas.connections maps to exactly one React Flow Edge. Edges are sorted by arrow.order before rendering.
+          status: implemented
+      preconditions:
+        - id: dr-pre-1
+          description: |
+            canvas (nodes[currentPath]) must be non-null. If null, renders "No canvas loaded" placeholder.
+          status: implemented
+      postconditions:
+        - id: dr-post-1
+          description: |
+            After drag-end (change.dragging === false), updateBlockPosition is called with the new position, setting store.dirty = true.
+          status: implemented
+        - id: dr-post-2
+          description: |
+            After onConnect, a new Arrow is added via store.addArrow with a generated ID and empty label.
+          status: implemented
+    source_map:
+      files:
+        - src/components/Canvas.tsx
+      entry_point: src/components/Canvas.tsx
+  - id: block-node-renderer
+    label: Block Node Renderer
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      Custom React Flow node for blocks. Renders a type icon (S/M/C/f/D/E/Q/G), label, drill-indicator arrow for hasChildren blocks, status dot, contract badge (X/Y impl), annotation text, and port list. Uses React.memo for render optimization. Has left Handle (target) and right Handle (source) for edge connections.
+    contract:
+      invariants:
+        - id: bn-inv-1
+          description: |
+            The type icon letter is deterministic per BlockType enum value. Default (undefined type) renders 'B'.
+          status: implemented
+        - id: bn-inv-2
+          description: |
+            Contract badge shows "{implemented+verified}/{total}" only when the block has at least one contract entry.
+          status: implemented
+    source_map:
+      files:
+        - src/components/BlockNode.tsx
+      entry_point: src/components/BlockNode.tsx
+  - id: arrow-edge-renderer
+    label: Arrow Edge Renderer
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      Custom React Flow edge for arrows. Uses getSmoothStepPath for routing. Supports bold weight (strokeWidth 4 vs 2), bidirectional markers, and label rendering via EdgeLabelRenderer. Handles multi-edge offset between same source/target pairs using offsetIndex * 20px vertical shift.
+    contract:
+      invariants:
+        - id: ae-inv-1
+          description: |
+            Bold arrows render with strokeWidth=4; normal arrows with strokeWidth=2.
+          status: implemented
+        - id: ae-inv-2
+          description: |
+            Bidirectional arrows have markerStart in addition to markerEnd.
+          status: implemented
+    source_map:
+      files:
+        - src/components/ArrowEdge.tsx
+      entry_point: src/components/ArrowEdge.tsx
+  - id: port-node-renderer
+    label: Port Node Renderer
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      Custom React Flow node for ports displayed on the canvas. Entry ports show a right-arrow and have a target Handle on the left. Exit ports show a left-arrow and have a source Handle on the right. Optionally shows the port type. Uses React.memo for render optimization.
+    contract:
+      invariants:
+        - id: pn-inv-1
+          description: |
+            Entry ports have a target Handle (left); exit ports have a source Handle (right). Never both.
+          status: implemented
+    source_map:
+      files:
+        - src/components/PortNode.tsx
+      entry_point: src/components/PortNode.tsx
+  - id: multi-edge-offsetter
+    label: Multi-Edge Offset Logic
+    has_children: false
+    ports: []
+    type: function
+    status: approved
+    annotation: |
+      Logic inside Canvas.rfEdges useMemo that detects multiple edges between the same source/target pair (or reverse) and assigns incrementing offsetIndex values. Each subsequent edge is shifted by offsetIndex * 20px vertically to prevent visual overlap. Uses a Map<string, number> keyed by "source-target" for counting.
+    contract:
+      invariants:
+        - id: me-inv-1
+          description: |
+            The first edge between a source-target pair gets offsetIndex=0 (no shift). Subsequent edges get incrementing offsets.
+          status: implemented
+    source_map:
+      files:
+        - src/components/Canvas.tsx
+      entry_point: src/components/Canvas.tsx
+connections:
+  - id: bridge-renders-blocks
+    from: react-flow-bridge
+    to: block-node-renderer
+    label: passes Block data as node.data.block
+    type: calls
+    order: 1
+    weight: normal
+    annotation: |
+      The bridge maps each canvas.component to a React Flow Node with type='block' and data={block, selected}. React Flow then renders the BlockNode component for each.
+  - id: bridge-renders-edges
+    from: react-flow-bridge
+    to: arrow-edge-renderer
+    label: passes Arrow data as edge.data.arrow
+    type: calls
+    order: 2
+    weight: normal
+    annotation: |
+      The bridge maps each canvas.connection to a React Flow Edge with type='arrow' and data={arrow, selected, offsetIndex}. React Flow then renders the ArrowEdge component for each.
+  - id: bridge-offsets-edges
+    from: react-flow-bridge
+    to: multi-edge-offsetter
+    label: computes offsetIndex per edge
+    type: calls
+    order: 3
+    weight: normal
+    annotation: |
+      Before passing edges to React Flow, the bridge runs the multi-edge offset logic to assign offsetIndex to edges sharing the same source-target pair.
+ports:
+  - id: dr-state-entry
+    label: canvas model subscription
+    direction: entry
+    parent_arrow: renderer-reads-state
+    bound_to: react-flow-bridge
+    annotation: |
+      The React Flow bridge subscribes to store slices (components, connections, layout, selection) and rebuilds rfNodes/rfEdges arrays when they change.
+  - id: dr-nav-entry
+    label: canvas switch trigger
+    direction: entry
+    parent_arrow: nav-triggers-renderer
+    bound_to: react-flow-bridge
+    annotation: |
+      When currentPath changes, the ReactFlow key prop forces a full remount, resetting pan/zoom state for the new canvas.

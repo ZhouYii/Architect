@@ -8,61 +8,32 @@ components:
     ports: []
     type: module
     status: approved
-    annotation: >
-      Orchestrates the full checkpoint creation sequence: flush pending changes
-      to disk, validate tree integrity (broken arrow refs, orphaned children,
-      missing fields), compute the structural hash, create a tar.gz archive,
-      increment the checkpoint counter, update workspace metadata, archive
-      resolved ACPs, generate Mermaid diagrams, and regenerate the
-      AGENT_GUIDE.md. This is the most complex orchestration in the system -- it
-      coordinates across storage, validation, and documentation concerns. The
-      boundary exists because checkpoint creation is a multi-step transaction
-      that must either succeed completely or fail with a clear error, and mixing
-      this logic into the UI or storage layer would make error handling
-      intractable.
+    annotation: |
+      Orchestrates the full checkpoint creation sequence: flush pending changes to disk, validate tree integrity (broken arrow refs, orphaned children, missing fields), compute the structural hash, create a tar.gz archive, increment the checkpoint counter, update workspace metadata, archive resolved ACPs, generate Mermaid diagrams, and regenerate the AGENT_GUIDE.md. This is the most complex orchestration in the system -- it coordinates across storage, validation, and documentation concerns. The boundary exists because checkpoint creation is a multi-step transaction that must either succeed completely or fail with a clear error, and mixing this logic into the UI or storage layer would make error handling intractable.
   - id: integrity-validation
     label: Integrity Validation
     has_children: false
     ports: []
     type: module
     status: approved
-    annotation: >
-      Pre-checkpoint checks that catch structural errors before they get
-      archived. Validates that every arrow's from/to references point to
-      existing blocks, that every block with hasChildren=true has a
-      corresponding child canvas, and (via contract validation) that contract
-      expressions don't reference deleted blocks. Returns a list of error
-      strings; if non-empty, the checkpoint is rejected. This gate prevents
-      corrupted states from being immortalized as checkpoints.
+    annotation: |
+      Pre-checkpoint checks that catch structural errors before they get archived. Validates that every arrow's from/to references point to existing blocks, that every block with hasChildren=true has a corresponding child canvas, and (via contract validation) that contract expressions don't reference deleted blocks. Returns a list of error strings; if non-empty, the checkpoint is rejected. This gate prevents corrupted states from being immortalized as checkpoints.
   - id: comparison-engine
     label: Version Comparison
     has_children: false
     ports: []
     type: module
     status: approved
-    annotation: >
-      Loads checkpoint archives from disk, deserializes them into canvas trees,
-      and feeds the before/after pairs to the diff computation engine. Currently
-      supports comparing the live state against a blank baseline; full
-      archive-to-archive comparison requires loading and parsing two tar.gz
-      files. The comparison result flows into the review system's merge overlay.
-      This is separated from diff computation itself because loading and
-      deserializing archives is an I/O-heavy concern, while diffing is a pure
-      computation.
+    annotation: |
+      Loads checkpoint archives from disk, deserializes them into canvas trees, and feeds the before/after pairs to the diff computation engine. Currently supports comparing the live state against a blank baseline; full archive-to-archive comparison requires loading and parsing two tar.gz files. The comparison result flows into the review system's merge overlay. This is separated from diff computation itself because loading and deserializing archives is an I/O-heavy concern, while diffing is a pure computation.
   - id: version-browsing
     label: Version Browsing
     has_children: false
     ports: []
     type: module
     status: approved
-    annotation: >
-      The UI tab that lists available checkpoint archives and lets the user
-      restore any past version. Restore is destructive -- it replaces the entire
-      tree directory with the archive contents, then reloads the workspace. A
-      confirmation dialog guards against accidental data loss. Version browsing
-      also provides the "Compare" button that triggers the comparison engine.
-      This UI is kept simple: a flat list with restore buttons, no branching or
-      merging semantics yet.
+    annotation: |
+      The UI tab that lists available checkpoint archives and lets the user restore any past version. Restore is destructive -- it replaces the entire tree directory with the archive contents, then reloads the workspace. A confirmation dialog guards against accidental data loss. Version browsing also provides the "Compare" button that triggers the comparison engine. This UI is kept simple: a flat list with restore buttons, no branching or merging semantics yet.
 connections:
   - id: lifecycle-validates
     from: checkpoint-lifecycle
@@ -71,10 +42,8 @@ connections:
     type: calls
     order: 1
     weight: normal
-    annotation: >
-      Before creating an archive, the lifecycle manager calls validateTree()
-      which scans all canvases for structural errors. If any errors are found,
-      checkpoint creation is aborted with a descriptive error message.
+    annotation: |
+      Before creating an archive, the lifecycle manager calls validateTree() which scans all canvases for structural errors. If any errors are found, checkpoint creation is aborted with a descriptive error message.
   - id: browsing-triggers-compare
     from: version-browsing
     to: comparison-engine
@@ -82,10 +51,8 @@ connections:
     type: calls
     order: 2
     weight: normal
-    annotation: >
-      The user clicks "Compare with last major" in the versions tab, which calls
-      diffWorkspaces() to generate diff entries and opens the merge review
-      overlay.
+    annotation: |
+      The user clicks "Compare with last major" in the versions tab, which calls diffWorkspaces() to generate diff entries and opens the merge review overlay.
   - id: browsing-triggers-restore
     from: version-browsing
     to: checkpoint-lifecycle
@@ -93,25 +60,20 @@ connections:
     type: calls
     order: 3
     weight: normal
-    annotation: >
-      The user selects a version and confirms the restore dialog. The lifecycle
-      layer calls restoreFromArchive via Tauri, which clears the tree directory
-      and unpacks the archive, then reloads the workspace.
+    annotation: |
+      The user selects a version and confirms the restore dialog. The lifecycle layer calls restoreFromArchive via Tauri, which clears the tree directory and unpacks the archive, then reloads the workspace.
 ports:
   - id: vh-archive-exit
     label: checkpoint archives
     direction: exit
     parent_arrow: history-snapshots
     bound_to: checkpoint-lifecycle
-    annotation: >
-      When the user creates a checkpoint, the lifecycle manager coordinates
-      writing the tar.gz archive and updating workspace metadata through the
-      storage system.
+    annotation: |
+      When the user creates a checkpoint, the lifecycle manager coordinates writing the tar.gz archive and updating workspace metadata through the storage system.
   - id: vh-diff-exit
     label: version differences
     direction: exit
     parent_arrow: history-compares
     bound_to: comparison-engine
-    annotation: >
-      The comparison engine produces diff entries by loading two versions and
-      feeding them to the diff computation in the review system.
+    annotation: |
+      The comparison engine produces diff entries by loading two versions and feeding them to the diff computation in the review system.
