@@ -6,6 +6,8 @@ import type {
   ChatMessage,
   CodeGraph,
   DesignNode,
+  ImplTask,
+  ImplTaskStatus,
   MergeConflict,
   TrackInfo,
   UIState,
@@ -30,6 +32,8 @@ export interface DesignStoreState {
   active_track: string | null;    // null = main branch
   tracks: TrackInfo[];
   merge_conflicts: MergeConflict[];
+  // Phase 6: implementation tasks
+  impl_tasks: ImplTask[];
 }
 
 // ─── Actions Shape ────────────────────────────────────────────────────────────
@@ -86,6 +90,15 @@ export interface DesignStoreActions {
   setTracks: (tracks: TrackInfo[]) => void;
   setMergeConflicts: (conflicts: MergeConflict[]) => void;
   resolveMergeConflict: (nodeId: string, canvasId: string, resolution: 'main' | 'track') => void;
+
+  // Phase 6: Implementation plan
+  setImplTasks: (tasks: ImplTask[]) => void;
+  setImplPlanId: (id: string | null) => void;
+  setSelectedTask: (taskId: string | null) => void;
+  toggleDrawer: () => void;
+  setDrawerOpen: (open: boolean) => void;
+  setDrawerHeight: (height: number) => void;
+  updateTaskStatus: (taskId: string, status: ImplTaskStatus) => void;
 }
 
 export type DesignStore = DesignStoreState & DesignStoreActions;
@@ -105,6 +118,11 @@ const INITIAL_STATE: DesignStoreState = {
     version: '1.0',
     last_major_version: 0,
     last_major_hash: '',
+    // Phase 6
+    drawer_open: false,
+    drawer_height: 300,
+    selected_task_id: null,
+    impl_plan_id: null,
   },
   // Phase 4
   agent_changesets: [],
@@ -115,6 +133,8 @@ const INITIAL_STATE: DesignStoreState = {
   active_track: null,
   tracks: [],
   merge_conflicts: [],
+  // Phase 6
+  impl_tasks: [],
 };
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -347,6 +367,51 @@ export const useDesignStore = create<DesignStore>()(
         );
         if (conflict) {
           conflict.resolution = resolution;
+        }
+      }),
+
+    // ── Phase 6: Implementation plan ─────────────────────────────────────
+
+    setImplTasks: (tasks) =>
+      set((state) => {
+        state.impl_tasks = tasks;
+      }),
+
+    setImplPlanId: (id) =>
+      set((state) => {
+        state.ui.impl_plan_id = id;
+      }),
+
+    setSelectedTask: (taskId) =>
+      set((state) => {
+        state.ui.selected_task_id = taskId;
+        if (taskId !== null) {
+          // Open the drawer and show it
+          state.ui.drawer_open = true;
+        }
+      }),
+
+    toggleDrawer: () =>
+      set((state) => {
+        state.ui.drawer_open = !state.ui.drawer_open;
+      }),
+
+    setDrawerOpen: (open) =>
+      set((state) => {
+        state.ui.drawer_open = open;
+      }),
+
+    setDrawerHeight: (height) =>
+      set((state) => {
+        state.ui.drawer_height = Math.max(80, Math.min(height, 600));
+      }),
+
+    updateTaskStatus: (taskId, status) =>
+      set((state) => {
+        const task = state.impl_tasks.find((t) => t.id === taskId);
+        if (task) {
+          task.status = status;
+          task.updated_at = new Date().toISOString();
         }
       }),
   }))

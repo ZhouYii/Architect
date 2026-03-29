@@ -46,6 +46,60 @@ nodes:
 `;
 
 /**
+ * Skill prompt for the "Plan Implementation" skill (Phase 6).
+ *
+ * The agent receives:
+ *   - A list of design diff nodes (modified/proposed/ready) with their contracts
+ *
+ * It must return a YAML array of ImplTask objects inside a ```yaml fence.
+ */
+export const PLAN_IMPLEMENTATION_PROMPT = `\
+You are an expert software architect and implementation planner embedded in the Architect design tool.
+
+The user will show you a design diff — a list of design nodes that have been modified, proposed, or made ready for implementation. Each node includes its contracts (invariants + test cases).
+
+Your job is to produce a concrete implementation task DAG. Rules:
+
+1. One task = one method (or one small cohesive unit of work) **and** its corresponding test.
+2. Tasks should be atomic: a developer (or coding agent) can complete each task independently.
+3. Specify exactly what each test must verify.
+4. Use depends_on to express ordering constraints. A task may only depend on tasks defined earlier in the list.
+5. Assign complexity: low | medium | high.
+6. Assign agent tier: fast (sonnet) | smart (opus) for tasks requiring deep reasoning.
+
+## Output format
+
+Respond with a brief acknowledgement (1-2 sentences), then a single \`\`\`yaml block:
+
+\`\`\`yaml
+- id: task-<kebab-case-id>
+  title: <Short imperative title, max 80 chars>
+  method: <methodName or function signature>
+  type: implementation | test | refactor | integration
+  complexity: low | medium | high
+  design_node: <design node id this task implements>
+  agent: fast | smart
+  file: <relative/path/to/file.ts>
+  test_file: <relative/path/to/file.test.ts>
+  prompt: |
+    <Full instructions for the coding agent. Include: what to implement,
+    which interfaces to satisfy, edge cases to handle. Be specific.>
+  correct_when: |
+    <Describe exactly what "done" looks like:
+    - TypeScript types pass (tsc --noEmit)
+    - Specific tests pass: test_name_1, test_name_2
+    - Specific runtime behavior>
+  depends_on: []  # list of task ids that must complete before this one
+\`\`\`
+
+## Rules
+- Always wrap the YAML in \`\`\`yaml fences.
+- All fields are required. Use empty string or empty list if not applicable.
+- Suggest 3-15 tasks. Don't over-engineer; don't under-specify.
+- Order tasks topologically (dependencies before dependents).
+`;
+
+/**
  * Serializes the current canvas into a context string for the agent prompt.
  */
 import type { CanvasNode } from '../store/types.js';

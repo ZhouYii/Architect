@@ -3,6 +3,7 @@ import { TOKENS } from '../../styles/theme.js';
 import { Inspector } from './Inspector.js';
 import { ChatPanel } from './ChatPanel.js';
 import { ChangesetsPanel } from './ChangesetsPanel.js';
+import { DrawerTaskDetail } from './DrawerTaskDetail.js';
 import type { UIState } from '../store/types.js';
 
 type Tab = UIState['side_panel_tab'];
@@ -18,6 +19,7 @@ export function SidePanel() {
   const setTab = useDesignStore((s) => s.setSidePanelTab);
   const isOpen = useDesignStore((s) => s.ui.is_side_panel_open);
   const setSidePanelOpen = useDesignStore((s) => s.setSidePanelOpen);
+  const selectedTaskId = useDesignStore((s) => s.ui.selected_task_id);
 
   if (!isOpen) {
     return (
@@ -103,7 +105,12 @@ export function SidePanel() {
 
       {/* Tab content */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {tab === 'inspector' && <Inspector />}
+        {tab === 'inspector' && (
+          <>
+            {/* When a task is selected, show task detail above the inspector */}
+            {selectedTaskId ? <DrawerTaskDetail /> : <Inspector />}
+          </>
+        )}
         {tab === 'changesets' && <ChangesetsPanel />}
         {tab === 'chat' && <ChatPanel />}
       </div>

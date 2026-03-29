@@ -7,6 +7,7 @@ import { VersionIndicator } from './VersionIndicator.js';
 import { TrackSwitcher } from './TrackSwitcher.js';
 import { cutVersion } from '../workspace/versioning.js';
 import { createTrack, switchTrack } from '../workspace/tracks.js';
+import { planImplementation } from '../orchestrator/planner.js';
 
 export function Toolbar() {
   const currentPath = useDesignStore((s) => s.ui.current_path);
@@ -19,8 +20,14 @@ export function Toolbar() {
   const toggleDeltaMode = useDesignStore((s) => s.toggleDeltaMode);
   const activeTrack = useDesignStore((s) => s.active_track);
   const tracks = useDesignStore((s) => s.tracks);
+  const setImplTasks = useDesignStore((s) => s.setImplTasks);
+  const setImplPlanId = useDesignStore((s) => s.setImplPlanId);
+  const setDrawerOpen = useDesignStore((s) => s.setDrawerOpen);
+  const toggleDrawer = useDesignStore((s) => s.toggleDrawer);
+  const lastMajorVersion = useDesignStore((s) => s.ui.last_major_version);
 
   const [isScanning, setIsScanning] = useState(false);
+  const [isPlanning, setIsPlanning] = useState(false);
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -39,6 +46,13 @@ export function Toolbar() {
       if (e.key === 'd' || e.key === 'D') {
         e.preventDefault();
         toggleDeltaMode();
+        return;
+      }
+
+      // 2 — toggle implementation drawer
+      if (e.key === '2') {
+        e.preventDefault();
+        toggleDrawer();
         return;
       }
 
@@ -117,7 +131,7 @@ export function Toolbar() {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [toggleDeltaMode, activeTrack, tracks]);
+  }, [toggleDeltaMode, activeTrack, tracks, toggleDrawer]);
 
   const handleViewToggle = useCallback(
     async (mode: 'conceptual' | 'code') => {
@@ -141,6 +155,23 @@ export function Toolbar() {
     },
     [viewMode, setViewMode, setCodeGraph],
   );
+
+  // ── Plan Implementation ─────────────────────────────────────────────────────
+  const handlePlanImplementation = useCallback(async () => {
+    setIsPlanning(true);
+    try {
+      const fromVersion = lastMajorVersion;
+      const toVersion = lastMajorVersion + 1;
+      const tasks = await planImplementation(fromVersion, toVersion);
+      setImplTasks(tasks);
+      setImplPlanId(`v${fromVersion}-to-v${toVersion}`);
+      setDrawerOpen(true);
+    } catch (err) {
+      console.error('[toolbar] planImplementation failed:', err);
+    } finally {
+      setIsPlanning(false);
+    }
+  }, [lastMajorVersion, setImplTasks, setImplPlanId, setDrawerOpen]);
 
   // Compute breadcrumb from stable primitives to avoid infinite re-render
   const breadcrumb: BreadcrumbSegment[] = useMemo(
@@ -255,6 +286,30 @@ export function Toolbar() {
 
       {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        {/* Plan Implementation button */}
+        <button
+          onClick={() => { void handlePlanImplementation(); }}
+          disabled={isPlanning}
+          style={{
+            padding: '4px 12px',
+            fontSize: 12,
+            fontWeight: 500,
+            color: isPlanning ? TOKENS.textTertiary : TOKENS.accent,
+            background: `${TOKENS.accent}16`,
+            border: `1px solid ${TOKENS.accent}44`,
+            borderRadius: 4,
+            cursor: isPlanning ? 'wait' : 'pointer',
+            letterSpacing: '0.01em',
+            flexShrink: 0,
+          }}
+          title="Generate implementation task DAG from design diff"
+        >
+          {isPlanning ? 'Planning…' : 'Plan'}
+        </button>
+
+        {/* Separator */}
+        <div style={{ width: 1, height: 18, background: TOKENS.border, flexShrink: 0 }} />
+
         {/* Track switcher */}
         <TrackSwitcher />
 

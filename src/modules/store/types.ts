@@ -30,7 +30,7 @@ export type ArrowType =
 
 export type ChangesetLevel = 'block' | 'canvas' | 'workspace';
 
-export type ImplTaskStatus = 'pending' | 'running' | 'done' | 'failed';
+export type ImplTaskStatus = 'queued' | 'running' | 'done' | 'failed' | 'blocked' | 'escalated';
 
 // ─── Design Nodes ─────────────────────────────────────────────────────────────
 
@@ -178,6 +178,19 @@ export interface AttemptLog {
 
 export interface ImplTask {
   id: string;
+  // Planning fields (Phase 6)
+  title?: string;
+  method?: string;
+  type?: string;
+  complexity?: string;
+  design_node?: string;
+  agent?: string;
+  file?: string;
+  test_file?: string;
+  prompt?: string;
+  correct_when?: string;
+  depends_on?: string[];
+  // Legacy fields
   canvas_id: string;
   node_id: string;
   status: ImplTaskStatus;
@@ -279,6 +292,11 @@ export interface UIState {
   version: string;             // e.g. "1.0", "2.0"
   last_major_version: number;
   last_major_hash: string;
+  // Phase 6: Implementation Drawer
+  drawer_open: boolean;
+  drawer_height: number;
+  selected_task_id: string | null;
+  impl_plan_id: string | null;
 }
 
 // ─── Aggregate / Computed ─────────────────────────────────────────────────────

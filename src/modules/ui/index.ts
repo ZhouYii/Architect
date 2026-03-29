@@ -5,3 +5,6 @@ export { VersionIndicator } from './VersionIndicator.js';
 export { DeltaOverlay } from './DeltaOverlay.js';
 export { TrackSwitcher } from './TrackSwitcher.js';
 export { MergeConflictView } from './MergeConflictView.js';
+export { Drawer } from './Drawer.js';
+export { DrawerTaskRow } from './DrawerTaskRow.js';
+export { DrawerTaskDetail } from './DrawerTaskDetail.js';

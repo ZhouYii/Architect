@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import './styles/globals.css';
 import { Canvas } from './modules/canvas/index.js';
 import { Toolbar, SidePanel, MergeConflictView } from './modules/ui/index.js';
+import { Drawer } from './modules/ui/Drawer.js';
 import { useDesignStore } from './modules/store/store.js';
 import {
   setWorkspacePath,
@@ -103,8 +104,12 @@ export function App() {
     <div className="app-layout">
       <Toolbar />
       <div className="app-body">
-        <div className="app-canvas">
-          <Canvas />
+        <div className="app-canvas-area" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minWidth: 0 }}>
+          <div className="app-canvas" style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+            <Canvas />
+          </div>
+          {/* Phase 6: Implementation drawer — overlays/pushes canvas area */}
+          <Drawer />
         </div>
         <SidePanel />
       </div>
