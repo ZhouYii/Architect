@@ -1,12 +1,52 @@
+import { useMemo, useState, useCallback } from 'react';
 import { useDesignStore } from '../store/store.js';
-import { selectBreadcrumb } from '../store/selectors.js';
 import { TOKENS } from '../../styles/theme.js';
+import type { BreadcrumbSegment } from '../store/selectors.js';
+import { scan } from '../scanner/index.js';
 
 export function Toolbar() {
-  const breadcrumb = useDesignStore(selectBreadcrumb);
+  const currentPath = useDesignStore((s) => s.ui.current_path);
+  const canvases = useDesignStore((s) => s.canvases);
   const navigateToIndex = useDesignStore((s) => s.navigateToIndex);
   const navigateUp = useDesignStore((s) => s.navigateUp);
-  const currentPath = useDesignStore((s) => s.ui.current_path);
+  const viewMode = useDesignStore((s) => s.ui.view_mode);
+  const setViewMode = useDesignStore((s) => s.setViewMode);
+  const setCodeGraph = useDesignStore((s) => s.setCodeGraph);
+
+  const [isScanning, setIsScanning] = useState(false);
+
+  const handleViewToggle = useCallback(
+    async (mode: 'conceptual' | 'code') => {
+      if (mode === viewMode) return;
+
+      if (mode === 'code') {
+        setIsScanning(true);
+        try {
+          // Ask the user for a path; fall back to '.' (app cwd) if no dialog
+          const projectPath = window.prompt('Enter project path to scan:', '.') ?? '.';
+          const graph = await scan(projectPath);
+          setCodeGraph(graph);
+        } catch (err) {
+          console.error('[toolbar] scan failed:', err);
+        } finally {
+          setIsScanning(false);
+        }
+      }
+
+      setViewMode(mode);
+    },
+    [viewMode, setViewMode, setCodeGraph],
+  );
+
+  // Compute breadcrumb from stable primitives to avoid infinite re-render
+  const breadcrumb: BreadcrumbSegment[] = useMemo(
+    () => currentPath.map((canvasId, index) => ({
+      canvas_id: canvasId,
+      label: canvases[canvasId]?.label ?? canvasId,
+      index,
+    })),
+    [currentPath, canvases],
+  );
 
   return (
     <div
@@ -125,7 +165,7 @@ export function Toolbar() {
           v0.0.0
         </div>
 
-        {/* View toggle placeholder */}
+        {/* View toggle */}
         <div
           style={{
             display: 'flex',
@@ -135,8 +175,18 @@ export function Toolbar() {
             overflow: 'hidden',
           }}
         >
-          <ViewToggleBtn label="◆" active title="Canvas view" />
-          <ViewToggleBtn label="≡" active={false} title="List view" />
+          <ViewToggleBtn
+            label="◆"
+            active={viewMode === 'conceptual'}
+            title="Conceptual view"
+            onClick={() => { void handleViewToggle('conceptual'); }}
+          />
+          <ViewToggleBtn
+            label={isScanning ? '…' : '≡'}
+            active={viewMode === 'code'}
+            title="Code view"
+            onClick={() => { void handleViewToggle('code'); }}
+          />
         </div>
       </div>
     </div>
@@ -147,14 +197,17 @@ function ViewToggleBtn({
   label,
   active,
   title,
+  onClick,
 }: {
   label: string;
   active: boolean;
   title: string;
+  onClick: () => void;
 }) {
   return (
     <button
       title={title}
+      onClick={onClick}
       style={{
         width: 28,
         height: 26,

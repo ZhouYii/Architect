@@ -22,6 +22,7 @@ import { TOKENS } from '../../styles/theme.js';
 import { BlockNode, type BlockNodeData } from './BlockNode.js';
 import { ArrowEdge, type ArrowEdgeData } from './ArrowEdge.js';
 import { useDrillDown, useNodeClick } from './hooks.js';
+import { CodeCanvas } from './CodeCanvas.js';
 
 // ─── Custom node/edge type map (stable references) ───────────────────────────
 const NODE_TYPES = { blockNode: BlockNode };
@@ -65,6 +66,16 @@ function arrowToFlowEdge(arrow: DesignNode, selectedId: string | null): Edge<Arr
 // ─── Canvas ───────────────────────────────────────────────────────────────────
 
 export function Canvas() {
+  const viewMode = useDesignStore((s) => s.ui.view_mode);
+
+  if (viewMode === 'code') {
+    return <CodeCanvas />;
+  }
+
+  return <ConceptualCanvas />;
+}
+
+function ConceptualCanvas() {
   const currentCanvasId = useDesignStore(selectCurrentCanvasId);
   const canvas = useDesignStore(selectCurrentCanvas);
   const selectedId = useDesignStore((s) => s.ui.selected_node_id);

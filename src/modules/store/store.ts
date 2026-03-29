@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { CanvasNode, DesignNode, UIState } from './types.js';
+import type { CanvasNode, CodeGraph, DesignNode, UIState, ViewMode } from './types.js';
 import { MOCK_CANVASES } from './mockData.js';
 
 // ─── State Shape ──────────────────────────────────────────────────────────────
@@ -8,6 +8,7 @@ import { MOCK_CANVASES } from './mockData.js';
 export interface DesignStoreState {
   canvases: Record<string, CanvasNode>;
   ui: UIState;
+  code_graph: CodeGraph | null;
 }
 
 // ─── Actions Shape ────────────────────────────────────────────────────────────
@@ -31,6 +32,10 @@ export interface DesignStoreActions {
   // Side panel
   setSidePanelTab: (tab: UIState['side_panel_tab']) => void;
   setSidePanelOpen: (open: boolean) => void;
+
+  // View mode & code graph
+  setViewMode: (mode: ViewMode) => void;
+  setCodeGraph: (graph: CodeGraph | null) => void;
 }
 
 export type DesignStore = DesignStoreState & DesignStoreActions;
@@ -39,11 +44,13 @@ export type DesignStore = DesignStoreState & DesignStoreActions;
 
 const INITIAL_STATE: DesignStoreState = {
   canvases: MOCK_CANVASES,
+  code_graph: null,
   ui: {
     selected_node_id: null,
     current_path: ['root'],
     side_panel_tab: 'inspector',
     is_side_panel_open: true,
+    view_mode: 'conceptual',
   },
 };
 
@@ -149,6 +156,18 @@ export const useDesignStore = create<DesignStore>()(
     setSidePanelOpen: (open) =>
       set((state) => {
         state.ui.is_side_panel_open = open;
+      }),
+
+    // ── View mode & code graph ─────────────────────────────────────────────
+
+    setViewMode: (mode) =>
+      set((state) => {
+        state.ui.view_mode = mode;
+      }),
+
+    setCodeGraph: (graph) =>
+      set((state) => {
+        state.code_graph = graph;
       }),
   }))
 );

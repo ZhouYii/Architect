@@ -4,3 +4,5 @@ export type { BlockNodeData } from './BlockNode.js';
 export { ArrowEdge } from './ArrowEdge.js';
 export type { ArrowEdgeData } from './ArrowEdge.js';
 export { useDrillDown, useNodeClick } from './hooks.js';
+export { CodeCanvas } from './CodeCanvas.js';
+export type { CodeFileNodeData } from './CodeCanvas.js';

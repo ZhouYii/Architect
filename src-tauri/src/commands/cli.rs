@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::process::Command;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CliResult {
@@ -7,16 +8,28 @@ pub struct CliResult {
     pub stderr: String,
 }
 
-/// Invoke an external CLI tool (e.g., git, a custom codegen binary).
-/// `args` is a list of command-line arguments.
+/// Invoke an external CLI tool (e.g., npx dependency-cruiser, git).
+/// `program` is the executable name, `args` is the argument list,
+/// and `cwd` optionally sets the working directory.
 #[tauri::command]
 pub fn invoke_cli(program: String, args: Vec<String>, cwd: Option<String>) -> CliResult {
-    let _ = program;
-    let _ = args;
-    let _ = cwd;
-    CliResult {
-        exit_code: 0,
-        stdout: String::new(),
-        stderr: String::new(),
+    let mut cmd = Command::new(&program);
+    cmd.args(&args);
+
+    if let Some(dir) = &cwd {
+        cmd.current_dir(dir);
+    }
+
+    match cmd.output() {
+        Ok(output) => CliResult {
+            exit_code: output.status.code().unwrap_or(-1),
+            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        },
+        Err(e) => CliResult {
+            exit_code: -1,
+            stdout: String::new(),
+            stderr: format!("Failed to spawn '{}': {}", program, e),
+        },
     }
 }

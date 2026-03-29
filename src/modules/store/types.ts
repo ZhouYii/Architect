@@ -221,11 +221,14 @@ export interface Track {
 
 // ─── UI State ─────────────────────────────────────────────────────────────────
 
+export type ViewMode = 'conceptual' | 'code';
+
 export interface UIState {
   selected_node_id: string | null;
   current_path: string[];      // stack of canvas IDs, [0] = root
   side_panel_tab: 'inspector' | 'changesets' | 'chat';
   is_side_panel_open: boolean;
+  view_mode: ViewMode;
 }
 
 // ─── Aggregate / Computed ─────────────────────────────────────────────────────
