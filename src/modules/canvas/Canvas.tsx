@@ -22,6 +22,7 @@ import { BlockNode, type BlockNodeData } from './BlockNode.js';
 import { ArrowEdge, type ArrowEdgeData } from './ArrowEdge.js';
 import { useDrillDown, useNodeClick } from './hooks.js';
 import { CodeCanvas } from './CodeCanvas.js';
+import { DeltaOverlay } from '../ui/DeltaOverlay.js';
 
 // ─── Custom node/edge type map (stable references) ───────────────────────────
 const NODE_TYPES = { blockNode: BlockNode };
@@ -32,13 +33,16 @@ const EDGE_TYPES = { arrowEdge: ArrowEdge };
 function blockToFlowNode(
   block: DesignNode,
   aggregate: StatusAggregate,
-  selectedId: string | null
+  selectedId: string | null,
+  deltaMode: boolean
 ): Node<BlockNodeData> {
+  const dimmed = deltaMode && block.status === 'clean';
   return {
     id: block.id,
     type: 'blockNode',
     position: { x: block.x ?? 100, y: block.y ?? 100 },
     selected: block.id === selectedId,
+    style: dimmed ? { opacity: 0.3 } : undefined,
     data: {
       node: block,
       aggregate: block.has_children ? aggregate : undefined,
@@ -47,13 +51,19 @@ function blockToFlowNode(
   };
 }
 
-function arrowToFlowEdge(arrow: DesignNode, selectedId: string | null): Edge<ArrowEdgeData> {
+function arrowToFlowEdge(
+  arrow: DesignNode,
+  selectedId: string | null,
+  deltaMode: boolean
+): Edge<ArrowEdgeData> {
+  const dimmed = deltaMode && arrow.status === 'clean';
   return {
     id: arrow.id,
     type: 'arrowEdge',
     source: arrow.source ?? '',
     target: arrow.target ?? '',
     selected: arrow.id === selectedId,
+    style: dimmed ? { opacity: 0.3 } : undefined,
     data: { arrow },
     markerEnd: {
       type: 'arrowclosed' as const,
@@ -79,6 +89,7 @@ function ConceptualCanvas() {
   const canvas = useDesignStore(selectCurrentCanvas);
   const selectedId = useDesignStore((s) => s.ui.selected_node_id);
   const canvases = useDesignStore((s) => s.canvases);
+  const deltaMode = useDesignStore((s) => s.ui.delta_mode);
 
   const onNodeDoubleClick = useDrillDown();
   const onNodeClick = useNodeClick();
@@ -115,16 +126,17 @@ function ConceptualCanvas() {
   const nodes: Node<BlockNodeData>[] = useMemo(() => {
     if (!canvas) return [];
     return canvas.components.map((block) =>
-      blockToFlowNode(block, aggregateMap[block.id] ?? { clean: 0, modified: 0, proposed: 0, ready: 0, running: 0, implemented: 0, failed: 0, dismissed: 0, total: 0 }, selectedId)
+      blockToFlowNode(block, aggregateMap[block.id] ?? { clean: 0, modified: 0, proposed: 0, ready: 0, running: 0, implemented: 0, failed: 0, dismissed: 0, total: 0 }, selectedId, deltaMode)
     );
-  }, [canvas, aggregateMap, selectedId]);
+  }, [canvas, aggregateMap, selectedId, deltaMode]);
 
   const edges: Edge<ArrowEdgeData>[] = useMemo(() => {
     if (!canvas) return [];
-    return canvas.connections.map((arrow) => arrowToFlowEdge(arrow, selectedId));
-  }, [canvas, selectedId]);
+    return canvas.connections.map((arrow) => arrowToFlowEdge(arrow, selectedId, deltaMode));
+  }, [canvas, selectedId, deltaMode]);
 
   return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
     <ReactFlow
       key={currentCanvasId}
       nodes={nodes}
@@ -187,5 +199,7 @@ function ConceptualCanvas() {
         }
       `}</style>
     </ReactFlow>
+    <DeltaOverlay />
+    </div>
   );
 }

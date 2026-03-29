@@ -1,8 +1,10 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useDesignStore } from '../store/store.js';
 import { TOKENS } from '../../styles/theme.js';
 import type { BreadcrumbSegment } from '../store/selectors.js';
 import { scan } from '../scanner/index.js';
+import { VersionIndicator } from './VersionIndicator.js';
+import { cutVersion } from '../workspace/versioning.js';
 
 export function Toolbar() {
   const currentPath = useDesignStore((s) => s.ui.current_path);
@@ -12,8 +14,43 @@ export function Toolbar() {
   const viewMode = useDesignStore((s) => s.ui.view_mode);
   const setViewMode = useDesignStore((s) => s.setViewMode);
   const setCodeGraph = useDesignStore((s) => s.setCodeGraph);
+  const toggleDeltaMode = useDesignStore((s) => s.toggleDeltaMode);
 
   const [isScanning, setIsScanning] = useState(false);
+
+  // ── Keyboard shortcuts ─────────────────────────────────────────────────────
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      // Ignore shortcuts when typing in inputs/textareas
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      // D — toggle delta mode
+      if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        toggleDeltaMode();
+        return;
+      }
+
+      // Ctrl+. — cut version
+      if (e.ctrlKey && e.key === '.') {
+        e.preventDefault();
+        cutVersion().catch((err: unknown) => {
+          console.error('[toolbar] cutVersion failed:', err);
+        });
+        return;
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [toggleDeltaMode]);
 
   const handleViewToggle = useCallback(
     async (mode: 'conceptual' | 'code') => {
@@ -151,19 +188,8 @@ export function Toolbar() {
 
       {/* Right side: placeholders */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        {/* Version indicator placeholder */}
-        <div
-          style={{
-            fontSize: 11,
-            color: TOKENS.textGhost,
-            padding: '2px 8px',
-            border: `1px solid ${TOKENS.border}`,
-            borderRadius: 4,
-            background: TOKENS.bgSurfaceRaised,
-          }}
-        >
-          v0.0.0
-        </div>
+        {/* Version indicator */}
+        <VersionIndicator />
 
         {/* View toggle */}
         <div

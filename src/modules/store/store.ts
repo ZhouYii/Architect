@@ -37,6 +37,13 @@ export interface DesignStoreActions {
   setViewMode: (mode: ViewMode) => void;
   setCodeGraph: (graph: CodeGraph | null) => void;
 
+  // Delta mode
+  toggleDeltaMode: () => void;
+
+  // Versioning
+  setVersion: (version: string, majorVersion: number, majorHash: string) => void;
+  resetDirtyNodes: () => void;
+
   // Workspace bulk-load
   loadCanvases: (canvases: Record<string, CanvasNode>, currentPath: string[]) => void;
 }
@@ -54,6 +61,10 @@ const INITIAL_STATE: DesignStoreState = {
     side_panel_tab: 'inspector',
     is_side_panel_open: true,
     view_mode: 'conceptual',
+    delta_mode: false,
+    version: '1.0',
+    last_major_version: 0,
+    last_major_hash: '',
   },
 };
 
@@ -171,6 +182,38 @@ export const useDesignStore = create<DesignStore>()(
     setCodeGraph: (graph) =>
       set((state) => {
         state.code_graph = graph;
+      }),
+
+    // ── Delta mode ────────────────────────────────────────────────────────
+
+    toggleDeltaMode: () =>
+      set((state) => {
+        state.ui.delta_mode = !state.ui.delta_mode;
+      }),
+
+    // ── Versioning ────────────────────────────────────────────────────────
+
+    setVersion: (version, majorVersion, majorHash) =>
+      set((state) => {
+        state.ui.version = version;
+        state.ui.last_major_version = majorVersion;
+        state.ui.last_major_hash = majorHash;
+      }),
+
+    resetDirtyNodes: () =>
+      set((state) => {
+        for (const canvas of Object.values(state.canvases)) {
+          for (const node of canvas.components) {
+            if (node.status === 'modified' || node.status === 'implemented') {
+              node.status = 'clean';
+            }
+          }
+          for (const arrow of canvas.connections) {
+            if (arrow.status === 'modified' || arrow.status === 'implemented') {
+              arrow.status = 'clean';
+            }
+          }
+        }
       }),
 
     // ── Workspace bulk-load ───────────────────────────────────────────────

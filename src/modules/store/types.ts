@@ -229,6 +229,10 @@ export interface UIState {
   side_panel_tab: 'inspector' | 'changesets' | 'chat';
   is_side_panel_open: boolean;
   view_mode: ViewMode;
+  delta_mode: boolean;
+  version: string;             // e.g. "1.0", "2.0"
+  last_major_version: number;
+  last_major_hash: string;
 }
 
 // ─── Aggregate / Computed ─────────────────────────────────────────────────────
