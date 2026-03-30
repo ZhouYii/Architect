@@ -48,15 +48,17 @@ function serializeDeltaForPrompt(delta: DesignNode[]): string {
     if (node.block_type) lines.push(`- block_type: ${node.block_type}`);
     if (node.annotation) lines.push(`- annotation: ${node.annotation}`);
     if (node.contract) {
-      if (node.contract.invariants.length > 0) {
+      const invariants = node.contract.invariants ?? [];
+      const testCases = node.contract.test_cases ?? [];
+      if (invariants.length > 0) {
         lines.push('- invariants:');
-        for (const inv of node.contract.invariants) {
+        for (const inv of invariants) {
           lines.push(`    - [${inv.satisfied ? 'x' : ' '}] ${inv.description}`);
         }
       }
-      if (node.contract.test_cases.length > 0) {
+      if (testCases.length > 0) {
         lines.push('- test_cases:');
-        for (const tc of node.contract.test_cases) {
+        for (const tc of testCases) {
           lines.push(`    - ${tc.name} (${tc.status})`);
         }
       }

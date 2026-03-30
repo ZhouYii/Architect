@@ -13,7 +13,7 @@
  *   Restore tree/ from a previously cut archive, then reload the workspace.
  */
 
-import { invoke } from '../../lib/ipc.js';
+import { safeInvoke } from '../../lib/ipc.js';
 import { useDesignStore } from '../store/store.js';
 import { flush } from './flush.js';
 import { getWorkspacePath } from './flush.js';
@@ -44,9 +44,12 @@ export async function cutVersion(): Promise<void> {
   await flush();
 
   // 2. Compute tree hash
-  const hashResult = await invoke<HashResult>('compute_tree_hash', {
+  const hashResult = await safeInvoke<HashResult>('compute_tree_hash', {
     path: workspacePath,
   });
+  if (!hashResult) {
+    throw new Error('[versioning] compute_tree_hash unavailable outside Tauri');
+  }
   if (hashResult.error) {
     throw new Error(`[versioning] compute_tree_hash failed: ${hashResult.error}`);
   }
@@ -57,10 +60,13 @@ export async function cutVersion(): Promise<void> {
   const nextMajor = ui.last_major_version + 1;
   const archivePath = `${workspacePath}/.architect/versions/v${nextMajor}.tar.gz`;
 
-  const archiveResult = await invoke<ArchiveResult>('create_version_archive', {
+  const archiveResult = await safeInvoke<ArchiveResult>('create_version_archive', {
     workspacePath,
     archivePath,
   });
+  if (!archiveResult) {
+    throw new Error('[versioning] create_version_archive unavailable outside Tauri');
+  }
   if (!archiveResult.success) {
     throw new Error(
       `[versioning] create_version_archive failed: ${archiveResult.error ?? 'unknown error'}`
@@ -100,10 +106,13 @@ export async function loadVersion(version: number): Promise<void> {
 
   const archivePath = `${workspacePath}/.architect/versions/v${version}.tar.gz`;
 
-  const result = await invoke<ArchiveResult>('restore_from_archive', {
+  const result = await safeInvoke<ArchiveResult>('restore_from_archive', {
     archivePath,
     targetPath: workspacePath,
   });
+  if (!result) {
+    throw new Error('[versioning] restore_from_archive unavailable outside Tauri');
+  }
   if (!result.success) {
     throw new Error(
       `[versioning] restore_from_archive failed: ${result.error ?? 'unknown error'}`

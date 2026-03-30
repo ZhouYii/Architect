@@ -103,18 +103,20 @@ function CodeLinks({ node }: { node: DesignNode }) {
 function ContractsChecklist({ node }: { node: DesignNode }) {
   const contract = node.contract;
   if (!contract) return null;
-  const hasItems = contract.invariants.length > 0 || contract.test_cases.length > 0;
+  const invariants = contract.invariants ?? [];
+  const testCases = contract.test_cases ?? [];
+  const hasItems = invariants.length > 0 || testCases.length > 0;
   if (!hasItems) return null;
 
   return (
     <div style={{ marginTop: 16 }}>
-      {contract.invariants.length > 0 && (
+      {invariants.length > 0 && (
         <div>
           <div style={{ fontSize: 11, fontWeight: 600, color: TOKENS.textTertiary, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
             Invariants
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {contract.invariants.map((inv) => (
+            {invariants.map((inv) => (
               <div key={inv.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: TOKENS.textSecondary }}>
                 <span style={{ color: inv.satisfied ? TOKENS.statusGreen : TOKENS.statusRed, flexShrink: 0, marginTop: 1 }}>
                   {inv.satisfied ? '✓' : '✗'}
@@ -126,13 +128,13 @@ function ContractsChecklist({ node }: { node: DesignNode }) {
         </div>
       )}
 
-      {contract.test_cases.length > 0 && (
+      {testCases.length > 0 && (
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: TOKENS.textTertiary, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
             Tests
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {contract.test_cases.map((tc) => {
+            {testCases.map((tc) => {
               const color = tc.status === 'pass' ? TOKENS.statusGreen : tc.status === 'fail' ? TOKENS.statusRed : TOKENS.textTertiary;
               return (
                 <div key={tc.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: TOKENS.textSecondary }}>

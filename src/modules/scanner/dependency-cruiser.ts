@@ -3,7 +3,7 @@
 // Invokes `npx dependency-cruiser --output-type json <path>` via the Tauri
 // `invoke_cli` command and parses the result into a CodeGraph.
 
-import { invoke } from '@tauri-apps/api/core';
+import { safeInvoke } from '../../lib/ipc.js';
 import type { ScannerPlugin } from './types.js';
 import type { CodeGraph, CodeGraphEdge, CodeGraphNode } from '../store/types.js';
 
@@ -57,11 +57,13 @@ export const dependencyCruiserPlugin: ScannerPlugin = {
   async canHandle(projectPath: string): Promise<boolean> {
     // Applicable when a package.json exists in the project root.
     try {
-      const result = await invoke<CliResult>('invoke_cli', {
+      const result = await safeInvoke<CliResult>('invoke_cli', {
         program: 'node',
         args: ['-e', 'require("fs").accessSync(process.argv[1])', `${projectPath}/package.json`],
         cwd: projectPath,
       });
+      // null means not in Tauri — return true as best guess
+      if (result === null) return true;
       return result.exit_code === 0;
     } catch {
       // On any error (e.g. Tauri not available in tests) return true as best guess
@@ -73,7 +75,7 @@ export const dependencyCruiserPlugin: ScannerPlugin = {
     let result: CliResult;
 
     try {
-      result = await invoke<CliResult>('invoke_cli', {
+      const invokeResult = await safeInvoke<CliResult>('invoke_cli', {
         program: 'npx',
         args: [
           '--yes',
@@ -84,6 +86,11 @@ export const dependencyCruiserPlugin: ScannerPlugin = {
         ],
         cwd: projectPath,
       });
+      if (invokeResult === null) {
+        console.warn('[dependency-cruiser] invoke_cli unavailable outside Tauri');
+        return emptyGraph();
+      }
+      result = invokeResult;
     } catch (err) {
       console.warn('[dependency-cruiser] invoke_cli threw:', err);
       return emptyGraph();

@@ -5,7 +5,7 @@
 // invoke_cli, evaluates correctness, escalates on failure, and updates
 // the Zustand store in real-time.
 
-import { invoke } from '@tauri-apps/api/core';
+import { safeInvoke } from '../../lib/ipc.js';
 import { useDesignStore } from '../store/store.js';
 import { checkCorrectness } from './correctness.js';
 import {
@@ -413,11 +413,12 @@ async function _executeTask(
       args = [...decision.args, prompt];
     }
 
-    return await invoke<CliResult>('invoke_cli', {
+    const cliResult = await safeInvoke<CliResult>('invoke_cli', {
       program,
       args,
       cwd: options.cwd ?? null,
     });
+    return cliResult ?? { exit_code: 1, stdout: '', stderr: 'Not in Tauri environment' };
   } catch (err) {
     return { exit_code: 1, stdout: '', stderr: String(err) };
   }

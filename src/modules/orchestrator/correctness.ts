@@ -3,7 +3,7 @@
 // Checks whether a completed task's output meets its `correct_when` criteria.
 // v1 strategy: check process exit code; optionally run tsc / test runner.
 
-import { invoke } from '@tauri-apps/api/core';
+import { safeInvoke } from '../../lib/ipc.js';
 import type { ImplTask } from '../store/types.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -96,7 +96,8 @@ async function _runCli(
   cwd: string | null
 ): Promise<CliResult> {
   try {
-    return await invoke<CliResult>('invoke_cli', { program, args, cwd });
+    const result = await safeInvoke<CliResult>('invoke_cli', { program, args, cwd: cwd ?? undefined });
+    return result ?? { exit_code: 1, stdout: '', stderr: 'Not in Tauri environment' };
   } catch (err) {
     return {
       exit_code: 1,

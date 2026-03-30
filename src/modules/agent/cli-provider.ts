@@ -1,7 +1,7 @@
 // ─── CLI-based LLM Provider ───────────────────────────────────────────────────
 // Uses Tauri's invoke_cli command to spawn CLI tools and capture their output.
 
-import { invoke } from '@tauri-apps/api/core';
+import { safeInvoke } from '../../lib/ipc.js';
 import type { LLMProvider } from './provider.js';
 
 interface CliResult {
@@ -33,12 +33,12 @@ export class CLIProvider implements LLMProvider {
 
   async available(): Promise<boolean> {
     try {
-      const result = await invoke<CliResult>('invoke_cli', {
+      const result = await safeInvoke<CliResult>('invoke_cli', {
         program: this.config.program,
         args: this.config.versionArgs,
         cwd: null,
       });
-      return result.exit_code === 0;
+      return result !== null && result.exit_code === 0;
     } catch {
       return false;
     }
@@ -52,11 +52,17 @@ export class CLIProvider implements LLMProvider {
     const assembled = assemblePrompt(prompt, context, options?.systemPrompt);
     const args = this.config.buildChatArgs(assembled);
 
-    const result = await invoke<CliResult>('invoke_cli', {
+    const result = await safeInvoke<CliResult>('invoke_cli', {
       program: this.config.program,
       args,
       cwd: null,
     });
+
+    if (result === null) {
+      throw new Error(
+        `CLI provider '${this.id}' unavailable outside Tauri`
+      );
+    }
 
     if (result.exit_code !== 0 && result.stdout.trim() === '') {
       throw new Error(

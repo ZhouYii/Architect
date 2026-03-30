@@ -72,10 +72,12 @@ function ContractBadge({ node }: ContractBadgeProps) {
   const contract = node.contract;
   if (!contract) return null;
 
-  const totalInv = contract.invariants.length;
-  const passedInv = contract.invariants.filter((i) => i.satisfied).length;
-  const totalTests = contract.test_cases.length;
-  const passedTests = contract.test_cases.filter((t) => t.status === 'pass').length;
+  const invariants = contract.invariants ?? [];
+  const testCases = contract.test_cases ?? [];
+  const totalInv = invariants.length;
+  const passedInv = invariants.filter((i) => i.satisfied).length;
+  const totalTests = testCases.length;
+  const passedTests = testCases.filter((t) => t.status === 'pass').length;
 
   if (totalInv === 0 && totalTests === 0) return null;
 

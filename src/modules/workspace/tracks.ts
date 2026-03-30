@@ -10,7 +10,7 @@
  *   Compare node.status, not archived diffs.
  */
 
-import { invoke } from '../../lib/ipc.js';
+import { safeInvoke } from '../../lib/ipc.js';
 import { useDesignStore } from '../store/store.js';
 import { serializeCanvas, deserializeCanvas } from './yaml.js';
 import { flush } from './flush.js';
@@ -48,7 +48,8 @@ async function _writeFiles(basePath: string, files: [string, string][]): Promise
   for (const [path, content] of files) {
     fileMap[path] = content;
   }
-  const result = await invoke<WriteFilesResult>('write_files', { base: basePath, files: fileMap });
+  const result = await safeInvoke<WriteFilesResult>('write_files', { base: basePath, files: fileMap });
+  if (!result) return; // Not in Tauri — skip writes silently
   if (!result.success) {
     throw new Error(result.error ?? 'write_files failed');
   }
@@ -60,7 +61,11 @@ async function _writeFiles(basePath: string, files: [string, string][]): Promise
  * Keys look like: "track.yaml", "tree/root/node.yaml", …
  */
 async function _readTrack(basePath: string, trackName: string): Promise<Record<string, string>> {
-  const result = await invoke<TrackReadResult>('read_track', { base: basePath, track: trackName });
+  const result = await safeInvoke<TrackReadResult>('read_track', { base: basePath, track: trackName });
+  if (!result) {
+    // Not in Tauri — return empty file map
+    return {};
+  }
   if (!result.success || result.data === null) {
     throw new Error(result.error ?? `read_track('${trackName}') returned no data`);
   }
@@ -387,7 +392,11 @@ export async function listTracks(): Promise<TrackInfo[]> {
   const workspacePath = getWorkspacePath();
   if (!workspacePath) return [];
 
-  const result = await invoke<ListTracksResult>('list_tracks', { base: workspacePath });
+  const result = await safeInvoke<ListTracksResult>('list_tracks', { base: workspacePath });
+  if (!result) {
+    // Not in Tauri — no tracks available
+    return [];
+  }
   if (!result.success) {
     console.error('[tracks] list_tracks failed:', result.error);
     return [];

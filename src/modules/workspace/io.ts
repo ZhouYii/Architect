@@ -1,8 +1,9 @@
 /**
  * Low-level Tauri IPC wrappers for workspace file I/O.
+ * When running in a plain browser (no Tauri), all calls return empty/no-op results.
  */
 
-import { invoke } from '../../lib/ipc.js';
+import { safeInvoke } from '../../lib/ipc.js';
 
 // ─── Types mirroring Rust structs ────────────────────────────────────────────
 
@@ -26,9 +27,15 @@ interface WriteFilesResult {
  * Keys look like: "workspace.yaml", "workspace.state.yaml", "tree/root/node.yaml", …
  *
  * Throws if the backend reports an error.
+ * Returns empty map when not running inside Tauri.
  */
 export async function readWorkspace(basePath: string): Promise<Record<string, string>> {
-  const result = await invoke<WorkspaceReadResult>('read_workspace', { path: basePath });
+  const result = await safeInvoke<WorkspaceReadResult>('read_workspace', { path: basePath });
+
+  // Not in Tauri — return empty map so callers fall through to mock data
+  if (result === null) {
+    return {};
+  }
 
   if (!result.success || result.data === null) {
     throw new Error(result.error ?? 'read_workspace returned no data');
@@ -46,6 +53,7 @@ export async function readWorkspace(basePath: string): Promise<Record<string, st
  * files are skipped by the backend).
  *
  * Throws if the backend reports an error.
+ * Returns empty array when not running inside Tauri.
  */
 export async function writeFiles(
   basePath: string,
@@ -57,10 +65,15 @@ export async function writeFiles(
     fileMap[path] = content;
   }
 
-  const result = await invoke<WriteFilesResult>('write_files', {
+  const result = await safeInvoke<WriteFilesResult>('write_files', {
     base: basePath,
     files: fileMap,
   });
+
+  // Not in Tauri — silently skip writes
+  if (result === null) {
+    return [];
+  }
 
   if (!result.success) {
     throw new Error(result.error ?? 'write_files failed');
